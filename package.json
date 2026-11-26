@@ -1,0 +1,54 @@
+{
+  "name": "harbourlight",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "White-label workspace for a Singapore foreign domestic worker employment agency. Harbourlight is the fictional demo.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start --hostname 0.0.0.0",
+    "demo": "prisma migrate deploy && tsx prisma/seed.ts",
+    "lint": "eslint",
+    "typecheck": "prisma generate && tsc --noEmit",
+    "test": "prisma generate && vitest run",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "tsx prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/amazon-bedrock": "^3.0.148",
+    "@ai-sdk/anthropic": "^2",
+    "@ai-sdk/google": "^2",
+    "@ai-sdk/openai": "^2",
+    "@aws-sdk/client-s3": "^3.940.0",
+    "@aws-sdk/s3-request-presigner": "^3.940.0",
+    "@prisma/client": "6.19.3",
+    "ai": "^5",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^17.2.3",
+    "next": "16.4.6",
+    "pdf-lib": "^1.17.1",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "4.3.3",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.6",
+    "prisma": "6.19.3",
+    "tailwindcss": "4.3.3",
+    "tsx": "^4.20.6",
+    "typescript": "^5",
+    "vitest": "3.2.4"
+  }
+}

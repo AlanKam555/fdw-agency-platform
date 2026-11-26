@@ -1,0 +1,20 @@
+title = "Published fixtures"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Documented local and CI placeholders. They are not live credentials."
+paths = [
+  '''.env.example''',
+  '''.github/workflows/ci.yml''',
+  '''README.md''',
+  '''CONTRIBUTING.md''',
+  '''prisma/seed.ts''',
+  '''docs/.*''',
+]
+regexes = [
+  '''MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=''',
+  '''ci-auth-secret-not-for-production-use-32''',
+  '''Harbourlight-Dev-1''',
+]

@@ -1,0 +1,34 @@
+export const PRIVACY_POLICY = {
+  version: "HL-PDPA-2026-11",
+  controller: "Harbourlight Agency (fictional demonstration deployment)",
+  purposes: [
+    "Assessing helper applications and employer requirements",
+    "Explaining job-factor matches to agency staff",
+    "Preparing a Ministry of Manpower work permit pack for staff to submit themselves",
+    "Publishing a helper profile only with photo and publicity consent",
+    "Responding to enquiries",
+  ],
+  notCollected: [
+    "Religion",
+    "Race or ethnicity",
+    "Pregnancy",
+    "Marital status",
+  ],
+  retention: {
+    activeApplicationDays: 365 * 2,
+    deployedRecordDays: 365 * 5,
+    enquiryDays: 365,
+    auditLogDays: 365 * 2,
+    rejectedApplicationDays: 180,
+  },
+  rights: [
+    "Access and correction of personal data we hold",
+    "Withdrawal of consent, which stops new use but may not erase records we must keep for a legal claim or MOM file already submitted by staff",
+    "Redaction by an administrator, which deletes documents and replaces direct identifiers",
+  ],
+} as const;
+
+export function retentionSummary(): string {
+  const r = PRIVACY_POLICY.retention;
+  return `Enquiries are kept for about ${r.enquiryDays} days, rejected applications for about ${r.rejectedApplicationDays} days, active files for about ${r.activeApplicationDays} days, deployed files for about ${r.deployedRecordDays} days, and staff audit logs for about ${r.auditLogDays} days. These are policy defaults for this product, not legal advice.`;
+}

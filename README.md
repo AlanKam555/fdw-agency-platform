@@ -93,14 +93,34 @@ Tests expect `DATABASE_URL`, `AUTH_SECRET`, and `FIELD_ENCRYPTION_KEY`. GitHub A
 1. Create a Vercel project from this repository and a managed Postgres database (Neon, Supabase, or Vercel Postgres).
 2. Set the environment variables from `.env.example`. Use a new `AUTH_SECRET`, a new `FIELD_ENCRYPTION_KEY`, and `BCRYPT_COST=12`. Leave every AI key empty until you choose a provider.
 3. Set `APP_URL` to the production https origin. CSRF checks compare the request origin with `APP_URL` and with the host the browser requested. Session and CSRF cookies are marked `Secure` when `APP_URL` starts with `https://`. An `http://localhost` value keeps the local demo able to sign in.
-4. Set `STORAGE_DRIVER=s3` and a private bucket (`S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`). The local disk driver writes under `./storage/<STORAGE_LOCAL_DIR>` and is for development. Vercel’s filesystem is ephemeral, so uploaded passports would disappear on the next instance.
-5. For more than one instance, set `RATE_LIMIT_DRIVER=upstash` (or `redis`) and the matching URL and token. The defaults stay in memory.
+4. Set `STORAGE_DRIVER=s3` and a private bucket (`S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`). Optional: `S3_ENDPOINT` and `S3_FORCE_PATH_STYLE` for R2 or MinIO, `S3_SSE=AES256` or `S3_SSE=aws:kms` with `S3_KMS_KEY_ID`. The app refuses to start in production when the driver is local, unless `ALLOW_LOCAL_STORAGE=true`.
+5. For more than one instance, set `RATE_LIMIT_DRIVER=upstash` (or `redis`) and the matching URL and token. Sign-in lockout uses that same store. The defaults stay in memory. `MFA_GRACE_DAYS` defaults to 7. `TOTP_ENCRYPTION_KEY` is optional and otherwise uses `FIELD_ENCRYPTION_KEY`.
 6. Build command: `npm run build` (it runs `prisma generate`). Release command or a one-off job: `npx prisma migrate deploy`.
 7. Do not run the seed against production.
 8. `vercel.json` schedules `GET /api/cron/reminders` and `GET /api/cron/retention`. Set `CRON_SECRET`. Vercel sends it as `Authorization: Bearer <CRON_SECRET>`. The reminder route lists due reminders and does not send email. The retention route is a dry run until `RETENTION_ENFORCE=true`. See [docs/retention.md](docs/retention.md).
 9. Re-read the MOM pages cited in `config/mom-rules.ts` and update the numbers. They are flagged `verify against current MOM guidance`.
 
 The app binds to `0.0.0.0` and the platform port. No background worker is required for the request path. Cron routes are the only scheduled work, and an external caller has to invoke them.
+
+## Environment
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Postgres connection string |
+| `AUTH_SECRET` | Signs session cookies and recovery-code hashes |
+| `FIELD_ENCRYPTION_KEY` | 32-byte base64 AES-256-GCM key for field encryption and, by default, TOTP secrets |
+| `TOTP_ENCRYPTION_KEY` | Optional separate 32-byte base64 key for TOTP secrets |
+| `APP_URL` | Public origin. `https` marks cookies `Secure` |
+| `BCRYPT_COST` | Password hashing cost. Use 12 outside tests |
+| `MFA_GRACE_DAYS` | Days before staff and admin must finish TOTP. Default 7 |
+| `LOCKOUT_DELAY_CAP_MS` | Optional cap on the sign-in delay. Leave unset in production |
+| `STORAGE_DRIVER` | `local` for development, `s3` for AWS S3, R2, or MinIO |
+| `ALLOW_LOCAL_STORAGE` | Must be `true` to keep the local driver when `NODE_ENV=production` |
+| `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | Private bucket credentials |
+| `S3_ENDPOINT`, `S3_FORCE_PATH_STYLE` | Custom endpoint. Path-style defaults on when an endpoint is set |
+| `S3_SSE`, `S3_KMS_KEY_ID` | `AES256` or `aws:kms`. KMS needs the key id |
+| `RATE_LIMIT_DRIVER` | `memory`, `upstash`, or `redis`. Lockout uses this store |
+| `CRON_SECRET` | Bearer token for cron routes |
 
 ## Security
 

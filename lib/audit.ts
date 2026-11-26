@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
-const SENSITIVE = /passport|fin|nric|medical|password|secret|token/i;
+const SENSITIVE = /passport|fin|nric|medical|password|secret|token|totp|recovery|otp|authorization/i;
 
 export function safeMetadata(metadata: Record<string, unknown> | undefined) {
   if (!metadata) return undefined;

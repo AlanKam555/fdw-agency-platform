@@ -4,6 +4,7 @@ import { Fraunces, Outfit } from "next/font/google";
 import { Footer, Header } from "@/components/chrome";
 import { brand } from "@/config/brand";
 import { AGENCY } from "@/content/site";
+import { brandStyleSheet } from "@/lib/security/brand-style";
 import "./globals.css";
 
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
@@ -32,14 +33,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html
       lang="en-SG"
       nonce={nonce}
-      className={`${outfit.variable} ${fraunces.variable}`}
-      style={{
-        ["--lagoon" as string]: brand.primary,
-        ["--brass" as string]: brand.accent,
-        ["--paper" as string]: brand.paper,
-      }}
+      className={`${outfit.variable} ${fraunces.variable} brand-colours`}
     >
       <body>
+        <style nonce={nonce} dangerouslySetInnerHTML={{ __html: brandStyleSheet(brand) }} />
         <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:bg-white focus:p-2">
           Skip to content
         </a>

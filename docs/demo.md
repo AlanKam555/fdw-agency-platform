@@ -21,6 +21,8 @@ npm run dev
 
 Open http://localhost:3000. Password for every seeded account: `Harbourlight-Dev-1`.
 
+Staff and admin are not given a TOTP secret in the seed. The first sign-in starts a seven-day grace period and sends you to Security. Add the authenticator secret shown there to an app, confirm a code, and store the recovery codes. The desk keeps working until the grace period ends. Employer and helper accounts can skip that step.
+
 | Email | You are |
 | --- | --- |
 | admin@harbourlight.example | Administrator |

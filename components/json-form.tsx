@@ -21,7 +21,7 @@ const BOOLEAN_FIELDS = new Set([
   "isUndischargedBankrupt",
 ]);
 
-function readCsrf() {
+export function readCsrf() {
   const match = document.cookie.match(/(?:^|; )hl_csrf=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : "";
 }

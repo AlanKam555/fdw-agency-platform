@@ -25,14 +25,83 @@ export async function authenticate(email: string, password: string, ip: string) 
     });
     return null;
   }
+  return user;
+}
+
+export async function changePassword(input: {
+  userId: string;
+  currentPassword: string;
+  nextPassword: string;
+  ip: string;
+}) {
+  const user = await prisma.user.findUnique({ where: { id: input.userId } });
+  if (!user || user.disabledAt) return { ok: false as const, error: "Sign in required.", status: 401 };
+  const matches = await verifyPassword(input.currentPassword, user.passwordHash);
+  if (!matches) return { ok: false as const, error: "The current password is not correct.", status: 401 };
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash: await hashPassword(input.nextPassword) },
+  });
+  const { revokeAllSessions } = await import("@/lib/auth/sessions");
+  await revokeAllSessions({ userId: user.id, reason: "password_changed", actorId: user.id, ip: input.ip });
   await writeAudit({
     actorId: user.id,
-    action: "auth.login",
+    action: "auth.password_changed",
     entityType: "User",
     entityId: user.id,
-    ip,
+    ip: input.ip,
   });
-  return user;
+  return { ok: true as const };
+}
+
+export async function resetUserPassword(input: {
+  actorId: string;
+  userId: string;
+  nextPassword: string;
+  ip: string;
+}) {
+  const user = await prisma.user.findUnique({ where: { id: input.userId } });
+  if (!user) return { ok: false as const, error: "Account not found.", status: 404 };
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash: await hashPassword(input.nextPassword) },
+  });
+  const { revokeAllSessions } = await import("@/lib/auth/sessions");
+  await revokeAllSessions({
+    userId: user.id,
+    reason: "password_reset",
+    actorId: input.actorId,
+    ip: input.ip,
+  });
+  await writeAudit({
+    actorId: input.actorId,
+    action: "user.password_reset",
+    entityType: "User",
+    entityId: user.id,
+    ip: input.ip,
+  });
+  return { ok: true as const };
+}
+
+export async function disableUserAccount(input: { actorId: string; userId: string; ip: string }) {
+  if (input.actorId === input.userId) {
+    return { ok: false as const, error: "You cannot disable your own account.", status: 400 };
+  }
+  const user = await prisma.user.findUnique({ where: { id: input.userId } });
+  if (!user) return { ok: false as const, error: "Account not found.", status: 404 };
+  if (!user.disabledAt) {
+    await prisma.user.update({ where: { id: user.id }, data: { disabledAt: new Date() } });
+  }
+  const { revokeAllSessions } = await import("@/lib/auth/sessions");
+  await revokeAllSessions({ userId: user.id, reason: "disabled", actorId: input.actorId, ip: input.ip });
+  await writeAudit({
+    actorId: input.actorId,
+    action: "user.disabled",
+    entityType: "User",
+    entityId: user.id,
+    ip: input.ip,
+  });
+  return { ok: true as const };
 }
 
 export async function registerAccount(input: {

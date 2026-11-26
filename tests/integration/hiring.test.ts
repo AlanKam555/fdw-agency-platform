@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
-import { createSessionToken } from "@/lib/auth/session";
+import { issueSession } from "@/lib/auth/sessions";
 import { hashPassword } from "@/lib/security/passwords";
 import { changeCandidateStatus, createCandidateApplication } from "@/lib/services/candidates";
 import { saveEmployerRequirement } from "@/lib/services/employers";
@@ -169,12 +169,11 @@ describe("hiring flow", () => {
     expect(Buffer.from(pdf!.bytes.subarray(0, 4)).toString("utf8")).toBe("%PDF");
 
     const csrf = "c".repeat(32);
-    const token = createSessionToken({
-      sub: employerUser.id,
-      role: "EMPLOYER",
-      name: "Test Employer",
+    const issued = await issueSession({
+      user: { id: employerUser.id, role: "EMPLOYER", name: "Test Employer" },
       csrf,
     });
+    const token = issued.token;
     const response = await staffIntake(
       new NextRequest("http://localhost:3000/api/staff/candidates", {
         method: "POST",

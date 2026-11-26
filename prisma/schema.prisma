@@ -105,23 +105,58 @@ enum DocumentKind {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  passwordHash String
-  name         String
-  role         Role
-  disabledAt   DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  employer     Employer?
-  candidate    Candidate?
-  auditLogs    AuditLog[]       @relation("actor")
-  drafts       MarketingDraft[] @relation("author")
-  reviews      MarketingDraft[] @relation("reviewer")
-  decisions    Match[]          @relation("decider")
-  campaigns    Campaign[]
-  utmLinks     UtmLink[]
-  weightEdits  MatchWeightProfile[]
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  passwordHash        String
+  name                String
+  role                Role
+  disabledAt          DateTime?
+  totpSecretEnc       String?
+  totpPendingSecretEnc String?
+  totpEnabledAt       DateTime?
+  totpLastStep        Int?
+  totpSetupDueAt      DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  employer            Employer?
+  candidate           Candidate?
+  auditLogs           AuditLog[]       @relation("actor")
+  drafts              MarketingDraft[] @relation("author")
+  reviews             MarketingDraft[] @relation("reviewer")
+  decisions           Match[]          @relation("decider")
+  campaigns           Campaign[]
+  utmLinks            UtmLink[]
+  weightEdits         MatchWeightProfile[]
+  sessions            Session[]
+  recoveryCodes       RecoveryCode[]
+}
+
+model Session {
+  id            String    @id @default(cuid())
+  tokenHash     String    @unique
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  ipHash        String?
+  userAgentHash String?
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model RecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@unique([userId, codeHash])
+  @@index([userId])
 }
 
 model Candidate {

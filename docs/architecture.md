@@ -22,7 +22,13 @@ flowchart LR
 
 ## Request path
 
-`proxy.ts` runs on document and API requests. It sets a per-request Content-Security-Policy with a script nonce, ensures the CSRF cookie exists, and redirects the wrong role away from `/dashboard`, `/employer`, and `/candidate`. Route handlers call `guardRequest`, which applies the rate limit, the origin and CSRF checks, and `hasPermission` where the route declares a permission.
+`proxy.ts` runs on document and API requests. It sets a per-request Content-Security-Policy with a script nonce and `strict-dynamic`. Style elements use that nonce. Style attributes are not allowed. Brand colours are a nonce'd class rule. The proxy also ensures the CSRF cookie exists, rejects a disabled account, and redirects the wrong role away from `/dashboard`, `/employer`, and `/candidate`.
+
+A session is a row in `Session`. The cookie carries a random id. The database stores only its SHA-256 hash, plus hashed IP and user-agent values. `guardRequest` and `requireUser` load that row on every request. A disabled account, a revoked row, or an expired row is signed out. Changing a password, disabling the account, or "sign out everywhere" revokes every row for that person.
+
+Route handlers call `guardRequest`, which applies the rate limit, the origin and CSRF checks, the session lookup, and `hasPermission` where the route declares a permission. Staff and admin accounts must enrol TOTP after `MFA_GRACE_DAYS`. Secrets are AES-256-GCM. Recovery codes are stored as HMAC hashes and can be used once.
+
+Documents use the storage driver in `lib/storage/files.ts`. Development can use local disk. Production requires `STORAGE_DRIVER=s3` unless `ALLOW_LOCAL_STORAGE=true`. S3 objects are private, use random keys, and are encrypted with SSE-S3 or SSE-KMS. A download is audited, then the browser receives a link that lasts at most five minutes. The local driver still encrypts the file with `FIELD_ENCRYPTION_KEY` because a disk file has no server-side encryption header.
 
 Pages under `app/` are the public site, the helper portal, the employer portal, and the staff desk. Shared markup is in `components/`. Copy and the white-label name live in `config/brand.ts` and `content/site.ts`.
 

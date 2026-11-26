@@ -54,7 +54,25 @@ export const passwordSchema = z
 export const loginSchema = z.object({
   email,
   password: z.string().min(1).max(72),
+  code: z.string().regex(/^\d{6}$/).optional().or(z.literal("")),
+  recoveryCode: z.string().min(8).max(32).optional().or(z.literal("")),
 });
+
+export const passwordChangeSchema = z.object({
+  currentPassword: z.string().min(1).max(72),
+  nextPassword: passwordSchema,
+});
+
+export const staffActionSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("disable"), userId: z.string().min(1).max(40) }),
+  z.object({ action: z.literal("sign_out_everywhere"), userId: z.string().min(1).max(40) }),
+  z.object({
+    action: z.literal("set_password"),
+    userId: z.string().min(1).max(40),
+    password: passwordSchema,
+  }),
+  z.object({ action: z.literal("revoke_session"), sessionId: z.string().min(1).max(40) }),
+]);
 
 export const registerSchema = z.object({
   role: z.enum(["EMPLOYER", "CANDIDATE"]),

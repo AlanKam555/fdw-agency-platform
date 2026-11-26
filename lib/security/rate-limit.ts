@@ -7,14 +7,20 @@ export type RateLimitResult = {
   retryAfterSeconds: number;
 };
 
+export type CounterReading = { count: number; ttlMs: number };
+
 export interface RateLimitStore {
   readonly name: string;
   consume(key: string, limit: number, windowMs: number, now?: number): Promise<RateLimitResult>;
+  readCounter?(key: string, now?: number): Promise<CounterReading>;
+  addCounter?(key: string, windowMs: number, now?: number): Promise<CounterReading>;
+  clearCounter?(key: string): Promise<void>;
 }
 
 type Bucket = { tokens: number; updatedAt: number };
 
 const buckets = new Map<string, Bucket>();
+const counters = new Map<string, { count: number; expiresAt: number }>();
 let override: { store: RateLimitStore | null } | null = null;
 let upstashStore: RateLimitStore | null = null;
 let upstashKey = "";
@@ -40,8 +46,29 @@ export function rateLimit(
   return { ok: true, remaining: current.tokens, retryAfterSeconds: 0 };
 }
 
+export function readMemoryCounter(key: string, now = Date.now()): CounterReading {
+  const row = counters.get(key);
+  if (!row || row.expiresAt <= now) return { count: 0, ttlMs: 0 };
+  return { count: row.count, ttlMs: row.expiresAt - now };
+}
+
+export function addMemoryCounter(key: string, windowMs: number, now = Date.now()): CounterReading {
+  const row = counters.get(key);
+  if (!row || row.expiresAt <= now) {
+    counters.set(key, { count: 1, expiresAt: now + windowMs });
+    return { count: 1, ttlMs: windowMs };
+  }
+  row.count += 1;
+  return { count: row.count, ttlMs: Math.max(0, row.expiresAt - now) };
+}
+
+export function clearMemoryCounter(key: string): void {
+  counters.delete(key);
+}
+
 export function resetRateLimits(): void {
   buckets.clear();
+  counters.clear();
   override = null;
   upstashStore = null;
   upstashKey = "";
@@ -86,6 +113,41 @@ function selectedStore(): RateLimitStore | null {
 
 export function activeRateLimitDriver(): string {
   return selectedStore()?.name ?? "memory";
+}
+
+async function withCounterStore<T>(
+  run: (store: RateLimitStore) => Promise<T>,
+  fallback: () => T | Promise<T>,
+): Promise<T> {
+  const store = selectedStore();
+  if (store?.readCounter && store.addCounter && store.clearCounter) {
+    try {
+      return await run(store);
+    } catch {
+      console.error(`[rate-limit] ${store.name} counter failed; using the in-memory counter for this process`);
+    }
+  }
+  return fallback();
+}
+
+export function readFailureCount(key: string, now = Date.now()): Promise<CounterReading> {
+  return withCounterStore((store) => store.readCounter!(key, now), () => readMemoryCounter(key, now));
+}
+
+export function addFailureCount(key: string, windowMs: number, now = Date.now()): Promise<CounterReading> {
+  return withCounterStore(
+    (store) => store.addCounter!(key, windowMs, now),
+    () => addMemoryCounter(key, windowMs, now),
+  );
+}
+
+export function clearFailureCount(key: string): Promise<void> {
+  return withCounterStore(
+    (store) => store.clearCounter!(key),
+    () => {
+      clearMemoryCounter(key);
+    },
+  );
 }
 
 export async function consumeRateLimit(

@@ -2,7 +2,7 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Role } from "@/lib/security/rbac";
 
 export const SESSION_COOKIE = "hl_session";
-const MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
+export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 export type SessionPayload = {
   sub: string;
@@ -10,6 +10,7 @@ export type SessionPayload = {
   name: string;
   exp: number;
   csrf: string;
+  sid: string;
 };
 
 function secret(): string {
@@ -29,14 +30,16 @@ export function createSessionToken(input: {
   role: Role;
   name: string;
   csrf?: string;
+  sid: string;
   now?: number;
 }): string {
   const payload: SessionPayload = {
     sub: input.sub,
     role: input.role,
     name: input.name,
-    exp: Math.floor((input.now ?? Date.now()) / 1000) + MAX_AGE_SECONDS,
+    exp: Math.floor((input.now ?? Date.now()) / 1000) + SESSION_MAX_AGE_SECONDS,
     csrf: input.csrf ?? randomBytes(32).toString("base64url"),
+    sid: input.sid,
   };
   const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
   return `${body}.${sign(body)}`;
@@ -57,7 +60,7 @@ export function verifySessionToken(
     const payload = JSON.parse(
       Buffer.from(body, "base64url").toString("utf8"),
     ) as SessionPayload;
-    if (!payload.sub || !payload.role || !payload.exp || !payload.csrf) return null;
+    if (!payload.sub || !payload.role || !payload.exp || !payload.csrf || !payload.sid) return null;
     if (payload.exp * 1000 <= now) return null;
     return payload;
   } catch {
@@ -78,8 +81,12 @@ export function sessionCookieOptions() {
     sameSite: "lax" as const,
     secure: cookiesAreSecure(),
     path: "/",
-    maxAge: MAX_AGE_SECONDS,
+    maxAge: SESSION_MAX_AGE_SECONDS,
   };
+}
+
+export function clearSessionCookieOptions() {
+  return { ...sessionCookieOptions(), maxAge: 0 };
 }
 
 export function csrfCookieOptions() {
@@ -88,6 +95,6 @@ export function csrfCookieOptions() {
     sameSite: "lax" as const,
     secure: cookiesAreSecure(),
     path: "/",
-    maxAge: MAX_AGE_SECONDS,
+    maxAge: SESSION_MAX_AGE_SECONDS,
   };
 }

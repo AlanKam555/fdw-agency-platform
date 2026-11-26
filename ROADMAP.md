@@ -13,11 +13,8 @@ This is a working MVP for agencies and for people who want to improve it. The it
 
 ## Larger work
 
-- Check `disabledAt` inside `guardRequest` before an API trusts the signed cookie. Page loads already do this. API routes do not, until the cookie expires.
-- Replace the signed cookie with a revocable session store, or follow the Clerk swap sketched in `docs/auth.md`.
 - Deliver reminder email through a provider the operator configures. The cron route currently returns the list and sends nothing.
 - Ask a qualified person to re-check every number in `config/mom-rules.ts` against the MOM pages cited in `docs/mom-rules.md`, then update the verification flag.
 - Fill `MOM_PUBLIC_HOLIDAYS` for the Settling-in Programme, with the year in the variable and a test that a holiday is not counted as a working day.
-- Move brand colours off the `<html>` style attribute so `style-src-attr` can drop `unsafe-inline`. Next already nonces its own style tags.
 
 Protected traits stay out of the schema. Matching stays deterministic. Marketing drafts stay in review. MOM submission stays manual.

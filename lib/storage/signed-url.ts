@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-type TokenPayload = { id: string; exp: number };
+type TokenPayload = { id: string; exp: number; sub?: string };
 
 function secret(): string {
   const value = process.env.AUTH_SECRET;
@@ -8,10 +8,16 @@ function secret(): string {
   return value;
 }
 
-export function signDocumentAccess(id: string, ttlSeconds = 300, now = Date.now()): string {
+export function signDocumentAccess(
+  id: string,
+  ttlSeconds = 300,
+  now = Date.now(),
+  sub?: string,
+): string {
   const payload: TokenPayload = {
     id,
     exp: Math.floor(now / 1000) + ttlSeconds,
+    ...(sub ? { sub } : {}),
   };
   const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
   const mac = createHmac("sha256", secret()).update(body).digest("base64url");

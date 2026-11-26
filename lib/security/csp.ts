@@ -8,7 +8,7 @@ const SCRIPT = (nonce: string, dev: boolean) =>
  *
  * Next.js reads the nonce from this header and stamps its scripts and style tags.
  * `strict-dynamic` lets those nonced scripts load the rest of the framework.
- * `style-src-attr` allows the brand colour variables on `<html>`.
+ * Style elements use the same nonce. Style attributes are refused.
  * `upgrade-insecure-requests` is added only when APP_URL is https, so the
  * local Docker demo on http://localhost still loads.
  */
@@ -27,8 +27,9 @@ export function contentSecurityPolicy(
     "form-action 'self'",
     "img-src 'self' blob: data:",
     "font-src 'self'",
+    `style-src 'self' 'nonce-${nonce}'`,
     `style-src-elem 'self' 'nonce-${nonce}'`,
-    "style-src-attr 'unsafe-inline'",
+    "style-src-attr 'none'",
     SCRIPT(nonce, dev),
     dev ? "connect-src 'self' ws: wss:" : "connect-src 'self'",
   ];

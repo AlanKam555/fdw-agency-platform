@@ -42,8 +42,10 @@ describe("content security policy", () => {
     expect(script).toBe("script-src 'self' 'nonce-abcDEF123' 'strict-dynamic'");
     expect(script).not.toContain("unsafe-inline");
     expect(script).not.toContain("unsafe-eval");
+    expect(policy).toContain("style-src 'self' 'nonce-abcDEF123'");
     expect(policy).toContain("style-src-elem 'self' 'nonce-abcDEF123'");
-    expect(policy).toContain("style-src-attr 'unsafe-inline'");
+    expect(policy).toContain("style-src-attr 'none'");
+    expect(policy).not.toContain("unsafe-inline");
     expect(policy).toContain("upgrade-insecure-requests");
     process.env.APP_URL = "http://localhost:3000";
     expect(contentSecurityPolicy("abcDEF123", false)).not.toContain("upgrade-insecure-requests");

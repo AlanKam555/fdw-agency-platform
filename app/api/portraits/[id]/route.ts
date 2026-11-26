@@ -1,13 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth/session";
-import { readEncryptedObject } from "@/lib/storage/files";
+import { resolveRequestSession } from "@/lib/auth/sessions";
+import { clearSessionCookieOptions, SESSION_COOKIE } from "@/lib/auth/session";
+import { readStoredObject } from "@/lib/storage/files";
 
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
   const { id } = await context.params;
+  const cookie = req.cookies.get(SESSION_COOKIE)?.value;
+  let staff = false;
+  if (cookie) {
+    try {
+      const resolved = await resolveRequestSession(cookie);
+      if (resolved.kind === "disabled") {
+        const response = new NextResponse("Sign in required.", { status: 401 });
+        response.cookies.set(SESSION_COOKIE, "", clearSessionCookieOptions());
+        return response;
+      }
+      staff = resolved.kind === "active" && (resolved.user.role === "ADMIN" || resolved.user.role === "STAFF");
+    } catch {
+      staff = false;
+    }
+  }
   const candidate = await prisma.candidate.findUnique({
     where: { id },
     include: { documents: { where: { kind: "PHOTO" }, orderBy: { createdAt: "desc" }, take: 1 } },
@@ -16,17 +32,10 @@ export async function GET(
   if (!candidate || !photo || !candidate.photoConsent || candidate.redactedAt) {
     return new NextResponse("Not found", { status: 404 });
   }
-  let staff = false;
-  try {
-    const session = verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
-    staff = session?.role === "ADMIN" || session?.role === "STAFF";
-  } catch {
-    staff = false;
-  }
   if (candidate.status !== "AVAILABLE" && !staff) {
     return new NextResponse("Not found", { status: 404 });
   }
-  const bytes = await readEncryptedObject(photo.storageKey);
+  const bytes = await readStoredObject(photo.storageKey);
   return new NextResponse(new Uint8Array(bytes), {
     headers: {
       "Content-Type": photo.contentType,

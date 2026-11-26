@@ -1,5 +1,14 @@
 import type { RateLimitStore } from "@/lib/security/rate-limit";
-import { FIXED_WINDOW_LUA, rateLimitKey, resultFromEval } from "@/lib/security/rate-limit-window";
+import {
+  counterFromEval,
+  FIXED_WINDOW_LUA,
+  LOCK_ADD_LUA,
+  LOCK_CLEAR_LUA,
+  LOCK_READ_LUA,
+  lockKey,
+  rateLimitKey,
+  resultFromEval,
+} from "@/lib/security/rate-limit-window";
 
 type EvalClient = {
   connect(): Promise<unknown>;
@@ -45,6 +54,23 @@ export function createRedisRateLimitStore(url: string): RateLimitStore {
         clientPromise = null;
         throw error;
       }
+    },
+    async readCounter(key) {
+      const connection = await client();
+      const raw = await connection.eval(LOCK_READ_LUA, { keys: [lockKey(key)], arguments: [] });
+      return counterFromEval(raw);
+    },
+    async addCounter(key, windowMs) {
+      const connection = await client();
+      const raw = await connection.eval(LOCK_ADD_LUA, {
+        keys: [lockKey(key)],
+        arguments: [String(windowMs)],
+      });
+      return counterFromEval(raw);
+    },
+    async clearCounter(key) {
+      const connection = await client();
+      await connection.eval(LOCK_CLEAR_LUA, { keys: [lockKey(key)], arguments: [] });
     },
   };
 }

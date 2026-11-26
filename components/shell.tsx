@@ -55,6 +55,9 @@ export function Shell({
               {label}
             </Link>
           ))}
+          <Link href="/account/security" className="rounded-lg px-2 py-1 hover:bg-[#efe4d4]">
+            Security
+          </Link>
           <LogoutButton />
         </nav>
       </aside>

@@ -284,6 +284,13 @@ export async function redactCandidate(input: { candidateId: string; actorId: str
       where: { id: candidate.userId },
       data: { disabledAt: new Date(), name: "Redacted", email: `redacted-${candidate.id}@invalid.local` },
     });
+    const { revokeAllSessions } = await import("@/lib/auth/sessions");
+    await revokeAllSessions({
+      userId: candidate.userId,
+      reason: "privacy_redact",
+      actorId: input.actorId,
+      ip: input.ip,
+    });
   }
   await writeAudit({
     actorId: input.actorId,

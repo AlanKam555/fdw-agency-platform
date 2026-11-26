@@ -3,9 +3,9 @@ import { prisma } from "@/lib/db";
 import { writeAudit } from "@/lib/audit";
 import { guardRequest, json } from "@/lib/http/api";
 import {
-  detectFileType,
   MAX_UPLOAD_BYTES,
-  saveEncryptedObject,
+  saveStoredObject,
+  validateUpload,
 } from "@/lib/storage/files";
 import type { DocumentKind } from "@prisma/client";
 
@@ -50,15 +50,15 @@ export async function POST(req: NextRequest) {
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());
-  const detected = detectFileType(bytes);
-  if (!detected) return json({ error: "Upload a PDF, JPEG, or PNG." }, 400);
-  const stored = await saveEncryptedObject(bytes);
+  const detected = validateUpload(bytes, file.type);
+  if (!detected.ok) return json({ error: detected.error }, 400);
+  const stored = await saveStoredObject(bytes, { contentType: detected.file.contentType });
   const document = await prisma.document.create({
     data: {
       candidateId: candidate?.id,
       kind: kind as DocumentKind,
       fileName: file.name.slice(0, 120),
-      contentType: detected.contentType,
+      contentType: detected.file.contentType,
       byteSize: bytes.length,
       storageKey: stored.storageKey,
       sha256: stored.sha256,
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     action: "document.upload",
     entityType: "Document",
     entityId: document.id,
-    metadata: { kind, candidateId: candidate?.id ?? null, contentType: detected.contentType },
+    metadata: { kind, candidateId: candidate?.id ?? null, contentType: detected.file.contentType },
     ip: guard.ip,
   });
   return json({ ok: true, id: document.id });

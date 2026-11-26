@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SESSION_COOKIE, verifySessionToken, type SessionPayload } from "@/lib/auth/session";
+import { clearSessionCookieOptions, SESSION_COOKIE, type SessionPayload } from "@/lib/auth/session";
+import { resolveRequestSession } from "@/lib/auth/sessions";
 import { CSRF_COOKIE, csrfIsValid, originAllowed, appOrigin } from "@/lib/security/csrf";
 import { clientIp, consumeRateLimit } from "@/lib/security/rate-limit";
 import { hasPermission, type Permission, type Role } from "@/lib/security/rbac";
+import { mfaSetupBlocks } from "@/lib/security/totp";
 import { z, type ZodError, type ZodTypeAny } from "zod";
 
-export function json(body: unknown, status = 200) {
-  return NextResponse.json(body, { status });
+export function json(body: unknown, status = 200, headers?: Record<string, string>) {
+  return NextResponse.json(body, { status, headers });
 }
 
 export function zodMessage(error: ZodError): string {
@@ -94,10 +96,34 @@ export async function guardRequest(
   }
 
   let session: SessionPayload | null = null;
-  try {
-    session = verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
-  } catch {
-    session = null;
+  const cookie = req.cookies.get(SESSION_COOKIE)?.value;
+  if (cookie) {
+    let resolved: Awaited<ReturnType<typeof resolveRequestSession>>;
+    try {
+      resolved = await resolveRequestSession(cookie);
+    } catch {
+      return { ok: false, response: rejectSession() };
+    }
+    if (resolved.kind === "disabled") {
+      return { ok: false, response: rejectSession() };
+    }
+    if (resolved.kind === "active") {
+      session = resolved.payload;
+      const path = req.nextUrl.pathname;
+      const mfaExempt =
+        path === "/api/auth/logout" ||
+        path === "/api/auth/password" ||
+        path.startsWith("/api/auth/mfa");
+      if (!mfaExempt && mfaSetupBlocks(resolved.user)) {
+        return {
+          ok: false,
+          response: json(
+            { error: "Set up two-factor authentication before continuing.", code: "mfa_setup_required" },
+            403,
+          ),
+        };
+      }
+    }
   }
 
   if (options.permission || options.roles) {
@@ -111,6 +137,12 @@ export async function guardRequest(
   }
 
   return { ok: true, ip, session };
+}
+
+function rejectSession() {
+  const response = json({ error: "Sign in required." }, 401);
+  response.cookies.set(SESSION_COOKIE, "", clearSessionCookieOptions());
+  return response;
 }
 
 export function parseBody<S extends ZodTypeAny>(schema: S, payload: Record<string, unknown>) {

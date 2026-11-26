@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 — 2026-11-26
+
+### Security
+
+- A disabled account is rejected on the next API call and the next page load. Sessions are rows that can be revoked. Password changes, disablement, and "sign out everywhere" revoke every session for that account.
+- Content-Security-Policy no longer allows inline style attributes. Brand colours are set in a nonce'd style element.
+- Document storage can use a private S3-compatible bucket with SSE-S3 or SSE-KMS, random object keys, and five-minute download URLs. Production refuses the local disk driver unless `ALLOW_LOCAL_STORAGE=true`. Downloads are audited. Docker Compose includes MinIO.
+- Sign-in uses a growing delay and then a temporary lock, with one generic error. Staff and admin must enrol TOTP after a grace period. Recovery codes are single-use. Demo accounts are not pre-enrolled. The first local sign-in opens the setup prompt.
+
 ## 0.2.0 — 2026-11-26
 
 First public release of `fdw-agency-platform`. The application tree is published under the MIT licence with a fresh git history.

@@ -1,4 +1,5 @@
 import { JsonForm } from "@/components/json-form";
+import { UserActions } from "@/components/user-actions";
 import { requireUser } from "@/lib/auth/current";
 import { prisma } from "@/lib/db";
 
@@ -9,16 +10,38 @@ export default async function UsersPage() {
   const users = await prisma.user.findMany({
     where: { role: { in: ["ADMIN", "STAFF"] } },
     orderBy: { createdAt: "desc" },
-    select: { id: true, name: true, email: true, role: true, disabledAt: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      disabledAt: true,
+      sessions: {
+        where: { revokedAt: null, expiresAt: { gt: new Date() } },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, createdAt: true, lastSeenAt: true },
+      },
+    },
   });
   return (
     <div className="grid gap-6">
       <h1 className="text-4xl">Staff accounts</h1>
-      <ul className="grid gap-2 text-sm">
+      <ul className="grid gap-4 text-sm">
         {users.map((user) => (
-          <li key={user.id}>
-            {user.name} · {user.email} · {user.role}
-            {user.disabledAt ? " · disabled" : ""}
+          <li key={user.id} className="card p-4">
+            <p>
+              {user.name} · {user.email} · {user.role}
+              {user.disabledAt ? " · disabled" : ""}
+            </p>
+            <UserActions
+              userId={user.id}
+              disabled={Boolean(user.disabledAt)}
+              sessions={user.sessions.map((session) => ({
+                id: session.id,
+                createdAt: session.createdAt.toISOString().slice(0, 16),
+                lastSeenAt: session.lastSeenAt.toISOString().slice(0, 16),
+              }))}
+            />
           </li>
         ))}
       </ul>

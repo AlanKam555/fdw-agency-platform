@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #f3ecdf;
+  --ink: #1b2421;
+  --lagoon: #0e3b37;
+  --lagoon-2: #1f6a62;
+  --brass: #a86432;
+  --card: #fffaf3;
+  --line: #e4d5c2;
+  --danger: #8d2f2f;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-lagoon: var(--lagoon);
+  --color-brass: var(--brass);
+  --color-card: var(--card);
+  --font-sans: var(--font-outfit);
+  --font-display: var(--font-fraunces);
+}
+
+body {
+  background:
+    radial-gradient(1200px 500px at 90% -10%, rgba(168, 100, 50, 0.16), transparent 55%),
+    var(--paper);
+  color: var(--ink);
+  font-family: var(--font-outfit), sans-serif;
+}
+
+h1, h2, h3, .display {
+  font-family: var(--font-fraunces), serif;
+  font-weight: 560;
+  letter-spacing: -0.03em;
+}
+
+a { color: inherit; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  background: var(--lagoon);
+  color: #f7f1e6;
+  padding: 0.7rem 1.15rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.btn:disabled { opacity: 0.6; }
+.btn.secondary { background: transparent; color: var(--lagoon); border: 1px solid var(--lagoon); }
+.btn.brass { background: var(--brass); }
+
+.field, .area, .select {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 0.8rem;
+  padding: 0.7rem 0.85rem;
+  color: var(--ink);
+}
+
+.area { min-height: 7rem; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+}
+
+.label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.92rem;
+}
+
+.chip {
+  display: inline-flex;
+  border-radius: 999px;
+  background: #efe4d4;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.78rem;
+}

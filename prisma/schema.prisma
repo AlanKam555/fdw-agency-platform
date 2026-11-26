@@ -1,0 +1,502 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  STAFF
+  EMPLOYER
+  CANDIDATE
+}
+
+enum CandidateStatus {
+  APPLIED
+  SCREENED
+  AVAILABLE
+  MATCHED
+  MOM_SUBMITTED
+  APPROVED
+  DEPLOYED
+  REJECTED
+  WITHDRAWN
+}
+
+enum Skill {
+  INFANT_CARE
+  CHILD_CARE
+  ELDERLY_CARE
+  COOKING
+  HOUSEKEEPING
+  PET_CARE
+  SPECIAL_NEEDS
+  DRIVING
+}
+
+enum MedicalFitStatus {
+  PENDING
+  FIT
+  UNFIT
+}
+
+enum Sex {
+  FEMALE
+  MALE
+  UNSPECIFIED
+}
+
+enum MatchDecision {
+  SUGGESTED
+  STAFF_APPROVED
+  STAFF_REJECTED
+}
+
+enum InterviewStatus {
+  REQUESTED
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  DECLINED
+}
+
+enum DraftKind {
+  SOCIAL_POST
+  AD_COPY
+  PROFILE_BLURB
+  CAMPAIGN_COPY
+  BLOG_ARTICLE
+  NEWSLETTER
+  HEADLINE
+  SEO_PAGE
+}
+
+enum PlacementKind {
+  NEW_HIRE
+  TRANSFER
+  RETURNING
+}
+
+enum CareNeed {
+  INFANT
+  NEWBORN
+  ELDERLY
+  DEMENTIA
+  DISABILITY
+  MULTIPLE_CHILDREN
+}
+
+enum DraftStatus {
+  DRAFT
+  APPROVED
+  REJECTED
+}
+
+enum DocumentKind {
+  PASSPORT
+  EDUCATIONAL_CERTIFICATE
+  MEDICAL
+  PHOTO
+  EMPLOYER_NRIC
+  OTHER
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         Role
+  disabledAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  employer     Employer?
+  candidate    Candidate?
+  auditLogs    AuditLog[]       @relation("actor")
+  drafts       MarketingDraft[] @relation("author")
+  reviews      MarketingDraft[] @relation("reviewer")
+  decisions    Match[]          @relation("decider")
+  campaigns    Campaign[]
+  utmLinks     UtmLink[]
+  weightEdits  MatchWeightProfile[]
+}
+
+model Candidate {
+  id                   String            @id @default(cuid())
+  userId               String?           @unique
+  user                 User?             @relation(fields: [userId], references: [id])
+  fullName             String
+  email                String?
+  phone                String?
+  nationality          String
+  dateOfBirth          DateTime
+  sex                  Sex
+  educationYears       Int
+  experienceYears      Int
+  skills               Skill[]
+  languages            String[]
+  salaryExpectationSgd Int
+  availableFrom        DateTime
+  status               CandidateStatus   @default(APPLIED)
+  publicBlurb          String            @default("")
+  householdExperience  String            @default("")
+  internalNotes        String            @default("")
+  photoConsent         Boolean           @default(false)
+  fictional            Boolean           @default(true)
+  firstTimeInSingapore Boolean           @default(true)
+  pdpaConsentAt        DateTime?
+  pdpaConsentVersion   String?
+  passportNumberEnc    String?
+  finEnc               String?
+  medicalNotesEnc      String?
+  medicalFitStatus     MedicalFitStatus  @default(PENDING)
+  placementKind        PlacementKind     @default(NEW_HIRE)
+  careNeeds            CareNeed[]        @default([])
+  skillLevels          Json              @default("{}")
+  languageLevels       Json              @default("{}")
+  redactedAt           DateTime?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  documents            Document[]
+  shortlists           Shortlist[]
+  interviews           InterviewRequest[]
+  matches              Match[]
+  consents             ConsentRecord[]
+  drafts               MarketingDraft[]
+
+  @@index([status])
+  @@index([email])
+}
+
+model Employer {
+  id                     String    @id @default(cuid())
+  userId                 String?   @unique
+  user                   User?     @relation(fields: [userId], references: [id])
+  fullName               String
+  email                  String
+  phone                  String
+  householdSize          Int
+  childrenCount          Int       @default(0)
+  youngestChildAge       Int?
+  childrenUnder7Count    Int       @default(0)
+  measlesVaccinatedUnder7 Boolean?
+  elderlyCount           Int       @default(0)
+  hasPets                Boolean   @default(false)
+  petDetails             String?
+  languagesPreferred     String[]
+  skillsRequired         Skill[]
+  budgetMinSgd           Int
+  budgetMaxSgd           Int
+  startDate              DateTime
+  housingType            String
+  addressArea            String
+  dateOfBirth            DateTime?
+  nricEnc                String?
+  isUndischargedBankrupt Boolean?
+  firstTimeEmployer      Boolean   @default(true)
+  eopCompleted           Boolean   @default(false)
+  eopCompletedOn         DateTime?
+  notes                  String    @default("")
+  pdpaConsentAt          DateTime?
+  pdpaConsentVersion     String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  requirements           EmployerRequirement[]
+  shortlists             Shortlist[]
+  interviews             InterviewRequest[]
+  matches                Match[]
+}
+
+model EmployerRequirement {
+  id         String   @id @default(cuid())
+  employerId String
+  employer   Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  title      String
+  payload    Json
+  createdAt  DateTime @default(now())
+  matches      Match[]
+  weightProfile MatchWeightProfile?
+
+  @@index([employerId])
+}
+
+model Enquiry {
+  id        String   @id @default(cuid())
+  kind      String
+  name      String
+  email     String
+  phone     String?
+  message     String
+  payload     Json?
+  source      String   @default("")
+  utmSource   String   @default("")
+  utmMedium   String   @default("")
+  utmCampaign String   @default("")
+  utmContent  String   @default("")
+  landingPath String   @default("")
+  createdAt   DateTime @default(now())
+
+  @@index([kind, createdAt])
+}
+
+model Shortlist {
+  id          String    @id @default(cuid())
+  employerId  String
+  candidateId String
+  employer    Employer  @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([employerId, candidateId])
+}
+
+model InterviewRequest {
+  id              String          @id @default(cuid())
+  employerId      String
+  candidateId     String
+  employer        Employer        @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  candidate       Candidate       @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  status          InterviewStatus @default(REQUESTED)
+  preferredWindow String
+  staffNote       String          @default("")
+  feedback        InterviewFeedback?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([employerId])
+  @@index([candidateId])
+}
+
+model Match {
+  id                String        @id @default(cuid())
+  requirementId     String
+  requirement       EmployerRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  candidateId       String
+  candidate         Candidate     @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  employerId        String
+  employer          Employer      @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  score             Int?
+  eligible          Boolean
+  ineligibleReasons String[]
+  breakdown         Json
+  explanation       String        @default("")
+  explanationSource String        @default("template")
+  decision          MatchDecision @default(SUGGESTED)
+  decidedById       String?
+  decidedBy         User?         @relation("decider", fields: [decidedById], references: [id])
+  decidedAt         DateTime?
+  createdAt         DateTime      @default(now())
+  momCase           MomCase?
+
+  @@unique([requirementId, candidateId])
+  @@index([employerId])
+}
+
+model MomCase {
+  id            String     @id @default(cuid())
+  matchId       String     @unique
+  match         Match      @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  checklist     Json
+  summary       Json
+  rulesSnapshot Json
+  ready         Boolean
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  reminders     Reminder[]
+}
+
+model Reminder {
+  id        String    @id @default(cuid())
+  momCaseId String
+  momCase   MomCase   @relation(fields: [momCaseId], references: [id], onDelete: Cascade)
+  code      String
+  title     String
+  dueHint   String
+  done      Boolean   @default(false)
+  doneAt    DateTime?
+
+  @@index([momCaseId])
+}
+
+model Document {
+  id           String       @id @default(cuid())
+  candidateId  String?
+  candidate    Candidate?   @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  employerId   String?
+  kind         DocumentKind
+  fileName     String
+  contentType  String
+  byteSize     Int
+  storageKey   String
+  sha256       String
+  uploadedById String?
+  createdAt    DateTime     @default(now())
+
+  @@index([candidateId])
+}
+
+model MarketingDraft {
+  id          String      @id @default(cuid())
+  kind        DraftKind
+  title       String
+  body        String
+  cautions    String      @default("")
+  source      String
+  status      DraftStatus @default(DRAFT)
+  authorId    String
+  author      User        @relation("author", fields: [authorId], references: [id])
+  reviewerId  String?
+  reviewer    User?       @relation("reviewer", fields: [reviewerId], references: [id])
+  reviewedAt  DateTime?
+  candidateId String?
+  candidate    Candidate?  @relation(fields: [candidateId], references: [id])
+  channel      String      @default("")
+  language     String      @default("en")
+  variantGroup String      @default("")
+  compliance   Json?
+  campaignId   String?
+  campaign     Campaign?   @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  createdAt    DateTime    @default(now())
+
+  @@index([status])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation("actor", fields: [actorId], references: [id])
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@index([actorId])
+}
+
+model ConsentRecord {
+  id            String    @id @default(cuid())
+  subjectType   String
+  subjectId     String
+  purpose       String
+  policyVersion String
+  granted       Boolean
+  grantedAt     DateTime  @default(now())
+  withdrawnAt   DateTime?
+  candidateId   String?
+  candidate     Candidate? @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+
+  @@index([subjectType, subjectId])
+}
+
+model AgencySetting {
+  id           String   @id @default("default")
+  eaLicenceNo  String   @default("00C0000")
+  personnel    Json     @default("[]")
+  brandVoice   String   @default("")
+  voiceNotes   String   @default("")
+  updatedAt    DateTime @updatedAt
+}
+
+model Campaign {
+  id        String         @id @default(cuid())
+  title     String
+  objective String         @default("")
+  startsOn  DateTime
+  endsOn    DateTime
+  authorId  String
+  author    User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt DateTime       @default(now())
+  slots     CampaignSlot[]
+  drafts    MarketingDraft[]
+}
+
+model CampaignSlot {
+  id           String    @id @default(cuid())
+  campaignId   String
+  campaign     Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  channel      String
+  language     String    @default("en")
+  scheduledFor DateTime
+  title        String    @default("")
+  draftId      String?
+  createdAt    DateTime  @default(now())
+
+  @@index([campaignId, scheduledFor])
+}
+
+model UtmLink {
+  id              String   @id @default(cuid())
+  label           String
+  destinationPath String
+  source          String
+  medium          String
+  campaign        String
+  content         String   @default("")
+  createdById     String
+  createdBy       User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+}
+
+model TestimonialRequest {
+  id             String    @id @default(cuid())
+  tokenHash      String    @unique
+  name           String
+  email          String
+  status         String    @default("REQUESTED")
+  prompt         String    @default("")
+  submittedText  String    @default("")
+  publishedQuote String    @default("")
+  area           String    @default("")
+  createdAt      DateTime  @default(now())
+  submittedAt    DateTime?
+  reviewedAt     DateTime?
+}
+
+model MatchWeightProfile {
+  id            String              @id @default(cuid())
+  requirementId String              @unique
+  requirement   EmployerRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  weights       Json
+  note          String              @default("")
+  updatedById   String?
+  updatedBy     User?               @relation(fields: [updatedById], references: [id])
+  updatedAt     DateTime            @updatedAt
+}
+
+model InterviewFeedback {
+  id               String           @id @default(cuid())
+  interviewId      String           @unique
+  interview        InterviewRequest @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  rating           Int
+  outcome          String
+  gaps             String[]
+  notes            String           @default("")
+  suggestedWeights Json?
+  appliedAt        DateTime?
+  createdById      String
+  createdAt        DateTime         @default(now())
+}
+
+model AiUsageLog {
+  id                  String   @id @default(cuid())
+  feature             String
+  provider            String
+  model               String
+  success             Boolean
+  latencyMs           Int
+  inputTokens         Int      @default(0)
+  outputTokens        Int      @default(0)
+  estimatedCostCents  Int      @default(0)
+  errorCode           String   @default("")
+  createdAt           DateTime @default(now())
+
+  @@index([feature, createdAt])
+  @@index([createdAt])
+}

@@ -32,4 +32,5 @@ yarn-error.log*
 
 /storage
 /tmp
+/test-private
 .playwright-mcp

@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { ConsentBox, LanguageChecks, SkillChecks } from "@/components/fields";
 import { JsonForm } from "@/components/json-form";
+import { AGENCY } from "@/content/site";
 
 export const metadata: Metadata = {
   title: "Employer enquiry",
-  description: "Tell Harbourlight about your household, languages, skills, budget, and start date.",
+  description: `Tell ${AGENCY.name} about your household, languages, skills, budget, and start date.`,
 };
 
 export default function EmployerEnquirePage() {

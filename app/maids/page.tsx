@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Portrait } from "@/components/portrait";
 import { SKILL_LABELS, skillLabel, LANGUAGES } from "@/lib/labels";
+import { AGENCY } from "@/content/site";
 import { listPublicHelpers } from "@/lib/services/candidates";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Available helpers",
-  description: "Consented helper profiles currently marked available by Harbourlight staff.",
+  description: `Consented helper profiles currently marked available by ${AGENCY.name} staff.`,
 };
 
 export default async function MaidsPage({

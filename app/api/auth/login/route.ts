@@ -8,7 +8,7 @@ import { homeForRole } from "@/lib/auth/current";
 
 export async function POST(req: NextRequest) {
   const payload = await req.json().catch(() => ({}));
-  const guard = guardRequest(req, payload, {
+  const guard = await guardRequest(req, payload, {
     limit: { key: "login", max: 10, windowMs: 15 * 60 * 1000 },
   });
   if (!guard.ok) return guard.response;

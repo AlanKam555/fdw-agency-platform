@@ -7,7 +7,7 @@ export async function POST(
   context: { params: Promise<{ id: string }> },
 ) {
   const payload = await req.json().catch(() => ({}));
-  const guard = guardRequest(req, payload, { permission: "candidates:delete" });
+  const guard = await guardRequest(req, payload, { permission: "candidates:delete" });
   if (!guard.ok) return guard.response;
   const { id } = await context.params;
   const result = await redactCandidate({

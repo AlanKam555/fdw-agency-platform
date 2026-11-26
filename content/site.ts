@@ -23,7 +23,7 @@ export const services = [
   {
     slug: "interview-coordination",
     title: "Interview coordination",
-    body: "Employers with an account can shortlist profiles and ask Harbourlight to arrange an interview. Staff confirm the time. We do not hand out a helper's phone number on the website.",
+    body: `Employers with an account can shortlist profiles and ask ${brand.name} to arrange an interview. Staff confirm the time. We do not hand out a helper's phone number on the website.`,
   },
   {
     slug: "work-permit-preparation",
@@ -70,7 +70,7 @@ export const testimonials = [
     name: "Mei Lin T.",
     area: "Queenstown",
     quote:
-      "Harbourlight walked us through the bond and the orientation course before anyone booked a flight. The interview was calm, and we knew the profile was a sample until we met her.",
+      `${brand.name} walked us through the bond and the orientation course before anyone booked a flight. The interview was calm, and we knew the profile was a sample until we met her.`,
   },
   {
     name: "Daniel Koh",
@@ -88,14 +88,14 @@ export const testimonials = [
 
 export const faqs = [
   {
-    question: "Is Harbourlight a licensed employment agency?",
-    answer:
-      "This deployment is a fictional product demonstration. The licence number on the site is not real. A live agency must hold a licence from the Ministry of Manpower and follow the Employment Agencies Act.",
+    question: `Is ${brand.name} a licensed employment agency?`,
+    answer: brand.fictionalDemo
+      ? "This deployment is a fictional product demonstration. The licence number on the site is not real. A live agency must hold a licence from the Ministry of Manpower and follow the Employment Agencies Act."
+      : `${brand.name} shows the licence number from its configuration. A live agency must hold a licence from the Ministry of Manpower and follow the Employment Agencies Act. This software does not verify that licence with the Ministry.`,
   },
   {
     question: "Do you submit the Work Permit for me?",
-    answer:
-      "No. MOM's Work Permit service requires Singpass or CorpPass. Harbourlight prepares a checklist, eligibility notes, and a PDF summary. A staff member or the employer submits the application.",
+    answer: `No. MOM's Work Permit service requires Singpass or CorpPass. ${brand.name} prepares a checklist, eligibility notes, and a PDF summary. A staff member or the employer submits the application.`,
   },
   {
     question: "Which details affect a match score?",

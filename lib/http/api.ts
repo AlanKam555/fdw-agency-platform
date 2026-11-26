@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, verifySessionToken, type SessionPayload } from "@/lib/auth/session";
 import { CSRF_COOKIE, csrfIsValid, originAllowed, appOrigin } from "@/lib/security/csrf";
-import { clientIp, rateLimit } from "@/lib/security/rate-limit";
+import { clientIp, consumeRateLimit } from "@/lib/security/rate-limit";
 import { hasPermission, type Permission, type Role } from "@/lib/security/rbac";
 import { z, type ZodError, type ZodTypeAny } from "zod";
 
@@ -47,7 +47,7 @@ export async function readPayload(req: NextRequest): Promise<Record<string, unkn
   return {};
 }
 
-export function guardRequest(
+export async function guardRequest(
   req: NextRequest,
   payload: Record<string, unknown>,
   options: {
@@ -56,24 +56,21 @@ export function guardRequest(
     limit?: { key: string; max: number; windowMs: number };
     csrf?: boolean;
   } = {},
-):
+): Promise<
   | { ok: true; ip: string; session: SessionPayload | null }
-  | { ok: false; response: NextResponse } {
+  | { ok: false; response: NextResponse }
+> {
   const ip = clientIp(req.headers);
   if (options.limit) {
-    const result = rateLimit(
+    const result = await consumeRateLimit(
       `${options.limit.key}:${ip}`,
       options.limit.max,
       options.limit.windowMs,
     );
     if (!result.ok) {
-      return {
-        ok: false,
-        response: json(
-          { error: "Too many requests. Try again shortly." },
-          429,
-        ),
-      };
+      const response = json({ error: "Too many requests. Try again shortly." }, 429);
+      response.headers.set("retry-after", String(result.retryAfterSeconds));
+      return { ok: false, response };
     }
   }
 

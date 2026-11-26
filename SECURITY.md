@@ -39,10 +39,10 @@ The browser is untrusted. Applicant and employer free text is untrusted, includi
 
 ## Residual risk
 
-- The rate limiter is process memory. A multi-instance deployment needs a shared store such as Redis. Restarting the server clears buckets.
-- Content-Security-Policy allows inline scripts so the Next.js runtime can boot. Development also allows `unsafe-eval`, which React's dev tooling needs. Production does not. A nonce-based policy is the production follow-up.
-- Login does not reveal whether an email exists. Registration does, so an attacker can probe addresses on the public register form.
-- Retention windows are documented and redaction is manual. There is no scheduled deletion job yet.
+- The default rate limiter is process memory. Set `RATE_LIMIT_DRIVER=upstash` or `RATE_LIMIT_DRIVER=redis` for a shared store. If that store errors, the process falls back to its own memory for that request so an outage does not remove the local limit. Restarting a process still clears its memory buckets.
+- Content-Security-Policy is issued per request with a script nonce. Production `script-src` is `'self'`, the nonce, and `strict-dynamic`. It does not allow `unsafe-inline` or `unsafe-eval`. Browsers that understand `strict-dynamic` ignore `'self'` and trust scripts loaded by a nonced script. `style-src-elem` uses the same nonce. `style-src-attr` still allows inline style attributes for the brand colour variables. Development adds `unsafe-eval` for React's dev tooling. `upgrade-insecure-requests` is sent only when `APP_URL` is https.
+- Login returns a generic error. Public registration and the public helper application return the same acknowledgement whether or not the email already exists, and registration does not set a session cookie. Creating a new row still takes slightly longer than the duplicate path, so a careful timing measurement can remain. Staff APIs can still say that an email is taken, because those routes require a staff session.
+- Retention windows are in `lib/privacy/policy.ts`. `GET /api/cron/retention` reports due counts. It redacts due helper profiles and deletes due enquiries only when `RETENTION_ENFORCE=true`, and it deletes aged audit rows only when `RETENTION_PURGE_AUDIT=true` as well. Nothing runs until an external scheduler calls the route. The windows are policy defaults, not a legal determination.
 - S3 is required for durable documents on Vercel. The local driver writes to disk, which disappears on a serverless restart.
 - Public holiday dates for the Settling-in Programme are an empty operator list.
 - MOM rule numbers must be re-checked against the pages cited in `docs/mom-rules.md` before a real filing.
@@ -55,4 +55,4 @@ The browser is untrusted. Applicant and employer free text is untrusted, includi
 
 ## Reporting
 
-Please report a vulnerability privately through [GitHub Security Advisories](https://github.com/AlanKam555/maid-agency-platform/security/advisories/new). Do not open a public issue, and do not include exploit detail, keys, or personal data in a public place. If the advisory form is unavailable, write to the repository owner without posting the details in a commit or an issue.
+Report a vulnerability privately through GitHub private vulnerability reporting on this repository: [open a security advisory](https://github.com/AlanKam555/fdw-agency-platform/security/advisories/new). Do not open a public issue, and do not include exploit detail, keys, or personal data in a public place. If the advisory form is unavailable, write to the repository owner without posting the details in a commit or an issue. Enable Settings → Advanced Security → Private vulnerability reporting if the form is not shown.

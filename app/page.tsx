@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { Portrait } from "@/components/portrait";
 import { AGENCY, services, testimonials } from "@/content/site";
 import { listPublicHelpers } from "@/lib/services/candidates";
@@ -7,6 +8,7 @@ import { skillLabel } from "@/lib/labels";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   const helpers = await listPublicHelpers({}).catch(() => []);
   return (
     <div>
@@ -17,7 +19,7 @@ export default async function HomePage() {
             Care for the household, with the paperwork kept in the open.
           </h1>
           <p className="mt-5 max-w-xl text-lg text-[var(--ink)]/80">
-            Harbourlight introduces foreign domestic workers to families in Singapore, then prepares the Ministry of Manpower file for a person to submit. Staff decide every match. AI only drafts words for review.
+            {AGENCY.name} introduces foreign domestic workers to families in Singapore, then prepares the Ministry of Manpower file for a person to submit. Staff decide every match. AI only drafts words for review.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link className="btn" href="/employers/enquire">
@@ -105,6 +107,7 @@ export default async function HomePage() {
       </section>
       <script
         type="application/ld+json"
+        nonce={nonce}
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             "@context": "https://schema.org",

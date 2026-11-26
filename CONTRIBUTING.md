@@ -27,7 +27,9 @@ npm run typecheck
 npm test
 ```
 
-Add a unit test when you change matching, MOM eligibility, advertisement compliance, or provider fallback. Integration tests use the database named by `DATABASE_URL`.
+Add a unit test when you change matching, MOM eligibility, advertisement compliance, provider fallback, the rate limiter, registration responses, content security policy, or retention selection. Integration tests use the database named by `DATABASE_URL`.
+
+Public registration and the public application route must keep returning the same acknowledgement when an email already exists. Do not add the address, or the words "already exists", to that response.
 
 ## Commit style
 

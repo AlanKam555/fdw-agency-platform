@@ -8,7 +8,7 @@ export async function POST(
   context: { params: Promise<{ id: string }> },
 ) {
   const payload = await req.json().catch(() => ({}));
-  const guard = guardRequest(req, payload, { permission: "marketing:review" });
+  const guard = await guardRequest(req, payload, { permission: "marketing:review" });
   if (!guard.ok) return guard.response;
   const parsed = parseBody(draftReviewSchema, payload);
   if (!parsed.success) return json({ error: "Choose approve or reject." }, 400);

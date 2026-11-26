@@ -14,7 +14,7 @@ export async function POST(
   context: { params: Promise<{ id: string }> },
 ) {
   const payload = await req.json().catch(() => ({}));
-  const guard = guardRequest(req, payload, { permission: "employers:write" });
+  const guard = await guardRequest(req, payload, { permission: "employers:write" });
   if (!guard.ok) return guard.response;
   const parsed = parseBody(schema, payload);
   if (!parsed.success) return json({ error: "Choose a status." }, 400);

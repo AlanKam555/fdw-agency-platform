@@ -65,11 +65,18 @@ export function verifySessionToken(
   }
 }
 
+/** Secure cookies follow APP_URL so the http://localhost demo can sign in. */
+export function cookiesAreSecure(): boolean {
+  const url = process.env.APP_URL;
+  if (url) return url.startsWith("https://");
+  return process.env.NODE_ENV === "production";
+}
+
 export function sessionCookieOptions() {
   return {
     httpOnly: true,
     sameSite: "lax" as const,
-    secure: process.env.NODE_ENV === "production",
+    secure: cookiesAreSecure(),
     path: "/",
     maxAge: MAX_AGE_SECONDS,
   };
@@ -79,7 +86,7 @@ export function csrfCookieOptions() {
   return {
     httpOnly: false,
     sameSite: "lax" as const,
-    secure: process.env.NODE_ENV === "production",
+    secure: cookiesAreSecure(),
     path: "/",
     maxAge: MAX_AGE_SECONDS,
   };

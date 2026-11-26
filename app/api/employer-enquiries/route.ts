@@ -5,7 +5,7 @@ import { employerRequirementSchema } from "@/lib/validation/schemas";
 
 export async function POST(req: NextRequest) {
   const payload = await req.json().catch(() => ({}));
-  const guard = guardRequest(req, payload, {
+  const guard = await guardRequest(req, payload, {
     limit: { key: "employer-enquiry", max: 8, windowMs: 15 * 60 * 1000 },
   });
   if (!guard.ok) return guard.response;

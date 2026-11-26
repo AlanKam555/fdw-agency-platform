@@ -14,7 +14,7 @@ const reviewSchema = z.object({
 
 export async function POST(req: NextRequest) {
   const payload = await req.json().catch(() => ({}));
-  const guard = guardRequest(req, payload, { permission: "marketing:review" });
+  const guard = await guardRequest(req, payload, { permission: "marketing:review" });
   if (!guard.ok) return guard.response;
   if (payload && typeof payload === "object" && "decision" in payload) {
     const parsed = parseBody(reviewSchema, payload);

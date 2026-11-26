@@ -24,6 +24,9 @@ services:
       APP_URL: ${APP_URL:-http://localhost:3000}
       CRON_SECRET: ${CRON_SECRET:-dev-cron-secret-not-for-production}
       BCRYPT_COST: ${BCRYPT_COST:-4}
+      RATE_LIMIT_DRIVER: memory
+      RETENTION_ENFORCE: "false"
+      RETENTION_PURGE_AUDIT: "false"
       STORAGE_DRIVER: local
       STORAGE_LOCAL_DIR: private
       SEED_DEMO: ${SEED_DEMO:-false}

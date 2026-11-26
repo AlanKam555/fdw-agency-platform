@@ -8,7 +8,7 @@ export async function POST(
   context: { params: Promise<{ matchId: string }> },
 ) {
   const payload = await req.json().catch(() => ({}));
-  const guard = guardRequest(req, payload, { permission: "mom:prepare" });
+  const guard = await guardRequest(req, payload, { permission: "mom:prepare" });
   if (!guard.ok) return guard.response;
   const parsed = parseBody(momAttestationSchema, payload);
   if (!parsed.success) return json({ error: zodMessage(parsed.error) }, 400);

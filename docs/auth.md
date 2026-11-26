@@ -1,6 +1,6 @@
 # Authentication
 
-Harbourlight signs its own session cookie so the MVP runs without an external identity provider. The session is an HMAC-SHA256 token in the `hl_session` cookie (`httpOnly`, `SameSite=Lax`, seven days). Roles are `ADMIN`, `STAFF`, `EMPLOYER`, and `CANDIDATE`.
+The app signs its own session cookie so it runs without an external identity provider. The session is an HMAC-SHA256 token in the `hl_session` cookie (`httpOnly`, `SameSite=Lax`, seven days). The cookie is `Secure` when `APP_URL` starts with `https://`. Roles are `ADMIN`, `STAFF`, `EMPLOYER`, and `CANDIDATE`.
 
 Public registration creates employer and helper accounts only. Administrators create staff accounts.
 

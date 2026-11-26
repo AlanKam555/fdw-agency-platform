@@ -43,16 +43,24 @@ export async function registerAccount(input: {
   ip: string;
 }) {
   const email = input.email.toLowerCase();
+  const passwordHash = await hashPassword(input.password);
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    return { ok: false as const, error: "An account with this email already exists. Sign in instead." };
+    await writeAudit({
+      action: "auth.register_unconfirmed",
+      entityType: "User",
+      entityId: existing.id,
+      metadata: { outcome: "existing" },
+      ip: input.ip,
+    });
+    return { ok: true as const, created: false as const };
   }
   const user = await prisma.user.create({
     data: {
       email,
       name: input.name,
       role: input.role,
-      passwordHash: await hashPassword(input.password),
+      passwordHash,
     },
   });
   await prisma.consentRecord.create({
@@ -72,5 +80,5 @@ export async function registerAccount(input: {
     metadata: { role: user.role },
     ip: input.ip,
   });
-  return { ok: true as const, user };
+  return { ok: true as const, created: true as const, user };
 }

@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { ConsentBox, LanguageChecks, SkillChecks } from "@/components/fields";
 import { JsonForm } from "@/components/json-form";
 import { momRules } from "@/config/mom-rules";
+import { AGENCY } from "@/content/site";
 
 export const metadata: Metadata = {
   title: "Helper application",
-  description: "Apply to Harbourlight as a foreign domestic worker. Religion, race, and pregnancy are not requested.",
+  description: `Apply to ${AGENCY.name} as a foreign domestic worker. Religion, race, and pregnancy are not requested.`,
 };
 
 export default function ApplyPage() {
@@ -13,10 +14,10 @@ export default function ApplyPage() {
     <div className="mx-auto max-w-2xl px-4 py-12">
       <h1 className="text-5xl">Helper application</h1>
       <p className="mt-3 leading-7 text-[var(--ink)]/80">
-        We ask for identity, work history, skills, languages, availability, and an optional passport number so staff can prepare a file. We do not ask about religion, race, or pregnancy. Sex and date of birth are collected only because current MOM eligibility rules use them as pass/fail checks ({momRules.meta.verificationStatus}).
+        We ask for identity, work history, skills, languages, availability, and an optional passport number so staff can prepare a file. We do not ask about religion, race, or pregnancy. Sex and date of birth are collected only because current MOM eligibility rules use them as pass/fail checks ({momRules.meta.verificationStatus}). The confirmation does not say whether this email is already registered.
       </p>
       <div className="card mt-6 p-6">
-        <JsonForm action="/api/applications" submitLabel="Submit application">
+        <JsonForm action="/api/applications" submitLabel="Submit application" refresh={false}>
           <label className="label">Full name<input className="field" name="fullName" required /></label>
           <label className="label">Email<input className="field" name="email" type="email" required /></label>
           <label className="label">Phone<input className="field" name="phone" required minLength={8} /></label>

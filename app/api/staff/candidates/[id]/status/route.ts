@@ -8,7 +8,7 @@ export async function POST(
   context: { params: Promise<{ id: string }> },
 ) {
   const payload = await req.json().catch(() => ({}));
-  const guard = guardRequest(req, payload, { permission: "candidates:write" });
+  const guard = await guardRequest(req, payload, { permission: "candidates:write" });
   if (!guard.ok) return guard.response;
   const parsed = parseBody(statusSchema, payload);
   if (!parsed.success) return json({ error: zodMessage(parsed.error) }, 400);

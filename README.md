@@ -1,45 +1,48 @@
-# Agency workspace
+# fdw-agency-platform
 
-A white-label workspace for a Singapore employment agency that places foreign domestic workers. The public name, EA licence number, colours, logo, locales, and MOM rule values come from environment variables. **Harbourlight**, licence `00C0000`, and the seeded people are a fictional demo used when those variables are empty.
+[![CI](https://github.com/AlanKam555/fdw-agency-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/AlanKam555/fdw-agency-platform/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/AlanKam555/fdw-agency-platform/actions/workflows/codeql.yml/badge.svg)](https://github.com/AlanKam555/fdw-agency-platform/actions/workflows/codeql.yml)
+[![Secret scan](https://github.com/AlanKam555/fdw-agency-platform/actions/workflows/secret-scan.yml/badge.svg)](https://github.com/AlanKam555/fdw-agency-platform/actions/workflows/secret-scan.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-This software is not legal advice. Operators must verify Ministry of Manpower rules and comply with the Personal Data Protection Act and the Employment Agencies Act. See [the disclaimer](app/disclaimer/page.tsx).
+Open-source workspace for a Singapore employment agency that places foreign domestic workers. It includes a public marketing site, helper applications, employer shortlists and interviews, explainable matching, a staff desk, and a MOM work-permit checklist with reminders and a PDF. It does not sign in to Singpass or CorpPass, and it does not submit an application.
 
-Sample people, testimonials, and portraits in the seed are invented.
+The public name, EA licence number, colours, logo, locales, and MOM rule values come from environment variables. **Harbourlight**, licence `00C0000`, and the seeded people are a fictional demo used when those variables are empty.
 
-## What it does
+This software is not legal advice. Operators must verify Ministry of Manpower rules and comply with the Personal Data Protection Act and the Employment Agencies Act. See the [disclaimer](app/disclaimer/page.tsx).
 
-- Public pages: home, services, care-need pages, journal, consented helper gallery, stories, FAQ, contact, helper application, employer brief, privacy notice, disclaimer
-- Accounts for admin, staff, employer, and helper, with a permission check on every staff and portal API
-- Status pipeline: applied, screened, available, matched, MOM submitted, approved, deployed, plus rejected and withdrawn
-- Matching by skills, languages, experience, salary ceiling, and availability, with eligibility gates kept out of the score
-- Marketing drafts for several channels and languages, campaign slots, UTM links, a funnel count, and testimonial requests. A compliance check blocks approval when the licence number, a personnel number, or prohibited wording is missing. Nothing is posted to a social network
-- AI providers: OpenAI, Anthropic, Google, xAI, Mistral, Groq, DeepSeek, Azure OpenAI, Amazon Bedrock, OpenRouter, and an OpenAI-compatible endpoint. Each feature has an ordered fallback. Usage is logged without the prompt text
-- MOM checklist, reminders, and PDF. No Singpass or CorpPass automation
+## Quick start
 
-Fairness rules are in [docs/matching-fairness.md](docs/matching-fairness.md). MOM citations are in [docs/mom-rules.md](docs/mom-rules.md). Personal data handling is in [docs/pdpa.md](docs/pdpa.md). The threat model is in [SECURITY.md](SECURITY.md).
+Use Node.js 22 and PostgreSQL 16. Every value in [`.env.example`](.env.example) is empty or a documented local placeholder.
 
-## Stack
+### Docker
 
-Next.js App Router, TypeScript, Tailwind, Prisma, PostgreSQL, Zod, and the Vercel AI SDK. Auth is a signed cookie so the app runs without an identity provider. The session shape is documented in [docs/auth.md](docs/auth.md) so it can be swapped for Clerk.
+```bash
+docker compose up --build
+```
 
-## Local setup
+Open http://localhost:3000. Postgres keeps its data in the `pgdata` volume. The app container runs migrations on startup. To load the fictional Harbourlight accounts as well:
 
-Use Node.js 22 and PostgreSQL 16.
+```bash
+SEED_DEMO=true docker compose up --build
+```
+
+Do not set `SEED_DEMO=true` on a database that holds real people. The demo password is `Harbourlight-Dev-1`.
+
+### Local
 
 ```bash
 cp .env.example .env
-# Set DATABASE_URL, AUTH_SECRET (16+ characters), and FIELD_ENCRYPTION_KEY
-# (32 bytes, base64). A development key is in .env.example. Generate another
-# for any shared environment: openssl rand -base64 32
+# Set DATABASE_URL if Postgres is not on localhost:5432.
+# Generate a real AUTH_SECRET and FIELD_ENCRYPTION_KEY before any shared deploy:
+#   openssl rand -base64 32
 npm install
 npx prisma migrate deploy
 npm run db:seed
 npm run dev
 ```
 
-Open http://localhost:3000.
-
-Every seeded account uses the password `Harbourlight-Dev-1`:
+`npm run demo` is the same migrate-and-seed step. Open http://localhost:3000.
 
 | Email | Role |
 | --- | --- |
@@ -50,13 +53,27 @@ Every seeded account uses the password `Harbourlight-Dev-1`:
 
 `BCRYPT_COST=4` is acceptable for local and CI. Use 12 in a deployed environment.
 
+A click-by-click tour of the demo is in [docs/demo.md](docs/demo.md). There is no hosted screenshot gallery: the theme is white-label, so run the demo and follow that tour.
+
+## What it does
+
+- Public pages: home, services, care-need pages, journal, consented helper gallery, stories, FAQ, contact, helper application, employer brief, privacy notice, disclaimer
+- Accounts for admin, staff, employer, and helper, with a permission check on every staff and portal API
+- Status pipeline: applied, screened, available, matched, MOM submitted, approved, deployed, plus rejected and withdrawn
+- Explainable matching: tunable weights, what-if, comparison, care needs, transfer and returning helpers, feedback suggestions, and a nationality fairness audit. Protected traits are not collected
+- Marketing drafts for several channels and seven languages, campaign slots, UTM links, a funnel count, and testimonial requests. A compliance check blocks approval when the licence number, a personnel number, or prohibited wording is missing. Nothing is posted to a social network
+- AI providers: OpenAI, Anthropic, Google, xAI, Mistral, Groq, DeepSeek, Azure OpenAI, Amazon Bedrock, OpenRouter, and an OpenAI-compatible endpoint. Each feature has an ordered fallback. Usage is logged without the prompt text
+- MOM checklist, reminders, and PDF. No Singpass or CorpPass automation
+
+Fairness rules are in [docs/matching-fairness.md](docs/matching-fairness.md). MOM citations are in [docs/mom-rules.md](docs/mom-rules.md). Personal data handling is in [docs/pdpa.md](docs/pdpa.md). The threat model is in [SECURITY.md](SECURITY.md). The layout of the code is in [docs/architecture.md](docs/architecture.md).
+
+## Stack
+
+Next.js App Router, TypeScript, Tailwind, Prisma, PostgreSQL, Zod, and the Vercel AI SDK. Auth is a signed cookie so the app runs without an identity provider. The session shape is documented in [docs/auth.md](docs/auth.md) so it can be swapped for Clerk.
+
 AI drafts and match explanations use a labelled template until a provider key in `.env.example` is set. `AI_MARKETING_PROVIDERS`, `AI_EXPLANATION_PROVIDERS`, and `AI_EMBEDDING_PROVIDERS` are comma-separated fallback lists. The admin settings page shows which providers are configured and never shows a key.
 
-One-command demo against the database in `.env`:
-
-```bash
-npm run demo
-```
+The rate limiter defaults to process memory. Set `RATE_LIMIT_DRIVER` to `upstash` or `redis` when you run more than one instance. See `.env.example`.
 
 ## Checks
 
@@ -67,31 +84,28 @@ npm test
 npm run build
 ```
 
-Tests expect `DATABASE_URL`, `AUTH_SECRET`, and `FIELD_ENCRYPTION_KEY`. GitHub Actions starts PostgreSQL and runs lint, typecheck, tests, and the production build. The workflow permission is `contents: read`.
+Tests expect `DATABASE_URL`, `AUTH_SECRET`, and `FIELD_ENCRYPTION_KEY`. GitHub Actions starts PostgreSQL and runs lint, typecheck, tests, and the production build. CodeQL and gitleaks run as separate workflows. The CI permission is `contents: read`.
 
 ## Deploy on Vercel
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/AlanKam555/maid-agency-platform&env=DATABASE_URL,AUTH_SECRET,FIELD_ENCRYPTION_KEY,APP_URL,CRON_SECRET)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/AlanKam555/fdw-agency-platform&env=DATABASE_URL,AUTH_SECRET,FIELD_ENCRYPTION_KEY,APP_URL,CRON_SECRET&project-name=fdw-agency-platform&repository-name=fdw-agency-platform)
 
 1. Create a Vercel project from this repository and a managed Postgres database (Neon, Supabase, or Vercel Postgres).
-2. Set the environment variables from `.env.example`. Use a new `AUTH_SECRET`, a new `FIELD_ENCRYPTION_KEY`, and `BCRYPT_COST=12`.
-3. Set `APP_URL` to the production origin. CSRF checks compare the request origin with `APP_URL` and with the host the browser requested.
+2. Set the environment variables from `.env.example`. Use a new `AUTH_SECRET`, a new `FIELD_ENCRYPTION_KEY`, and `BCRYPT_COST=12`. Leave every AI key empty until you choose a provider.
+3. Set `APP_URL` to the production https origin. CSRF checks compare the request origin with `APP_URL` and with the host the browser requested. Session and CSRF cookies are marked `Secure` when `APP_URL` starts with `https://`. An `http://localhost` value keeps the local demo able to sign in.
 4. Set `STORAGE_DRIVER=s3` and a private bucket (`S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`). The local disk driver writes under `./storage/<STORAGE_LOCAL_DIR>` and is for development. Vercel’s filesystem is ephemeral, so uploaded passports would disappear on the next instance.
-5. Build command: `npm run build` (it runs `prisma generate`). Release command or a one-off job: `npx prisma migrate deploy`.
-6. Do not run the seed against production.
-7. Point a daily caller at `GET /api/cron/reminders` with `Authorization: Bearer $CRON_SECRET`. The route lists due reminders. It does not send email. Wire that to your mailer before relying on it.
-8. Re-read the MOM pages cited in `config/mom-rules.ts` and update the numbers. They are flagged `verify against current MOM guidance`.
+5. For more than one instance, set `RATE_LIMIT_DRIVER=upstash` (or `redis`) and the matching URL and token. The defaults stay in memory.
+6. Build command: `npm run build` (it runs `prisma generate`). Release command or a one-off job: `npx prisma migrate deploy`.
+7. Do not run the seed against production.
+8. `vercel.json` schedules `GET /api/cron/reminders` and `GET /api/cron/retention`. Set `CRON_SECRET`. Vercel sends it as `Authorization: Bearer <CRON_SECRET>`. The reminder route lists due reminders and does not send email. The retention route is a dry run until `RETENTION_ENFORCE=true`. See [docs/retention.md](docs/retention.md).
+9. Re-read the MOM pages cited in `config/mom-rules.ts` and update the numbers. They are flagged `verify against current MOM guidance`.
 
-The app binds to `0.0.0.0` and the platform port. No background worker is required for the request path.
+The app binds to `0.0.0.0` and the platform port. No background worker is required for the request path. Cron routes are the only scheduled work, and an external caller has to invoke them.
 
-## Docker
+## Security
 
-```bash
-docker compose up --build
-```
+Report vulnerabilities through [GitHub private vulnerability reporting](https://github.com/AlanKam555/fdw-agency-platform/security/advisories/new) on this repository. Do not open a public issue. Details are in [SECURITY.md](SECURITY.md).
 
-That starts Postgres and the app. Set `SEED_DEMO=true` on the app service for the fictional Harbourlight accounts. Do not enable that seed on a database that holds real people. `npm run demo` is the same migrate-and-seed step on a host that already has Node and Postgres.
+## Contributing
 
-## Ownership
-
-[MIT](LICENSE). Copyright (c) 2026 Alan. Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Report vulnerabilities through [GitHub Security Advisories](https://github.com/AlanKam555/maid-agency-platform/security/advisories/new), not a public issue.
+[MIT](LICENSE). Copyright (c) 2026 Alan. Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and [ROADMAP.md](ROADMAP.md). Changes are recorded in [CHANGELOG.md](CHANGELOG.md).

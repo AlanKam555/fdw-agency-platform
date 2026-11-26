@@ -11,7 +11,7 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   const payload = await req.json().catch(() => ({}));
-  const guard = guardRequest(req, payload, { limit: { key: "testimonial", max: 5, windowMs: 15 * 60 * 1000 } });
+  const guard = await guardRequest(req, payload, { limit: { key: "testimonial", max: 5, windowMs: 15 * 60 * 1000 } });
   if (!guard.ok) return guard.response;
   const parsed = parseBody(schema, payload);
   if (!parsed.success) return json({ error: zodMessage(parsed.error) }, 400);

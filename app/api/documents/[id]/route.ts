@@ -17,7 +17,7 @@ export async function GET(
   const issue = req.nextUrl.searchParams.get("issue") === "1";
 
   if (issue) {
-    const guard = guardRequest(req, {}, { permission: "documents:staff", csrf: false });
+    const guard = await guardRequest(req, {}, { permission: "documents:staff", csrf: false });
     if (!guard.ok) return guard.response;
     await writeAudit({
       actorId: guard.session!.sub,
@@ -46,7 +46,7 @@ export async function GET(
   if (!document) return json({ error: "Document not found." }, 404);
   const bytes = await readEncryptedObject(document.storageKey);
   if (!signed) {
-    const guard = guardRequest(req, {}, { permission: "documents:staff", csrf: false });
+    const guard = await guardRequest(req, {}, { permission: "documents:staff", csrf: false });
     if (guard.ok) {
       await writeAudit({
         actorId: guard.session!.sub,

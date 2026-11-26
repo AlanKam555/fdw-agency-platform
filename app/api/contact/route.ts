@@ -6,7 +6,7 @@ import { contactSchema, PDPA_VERSION } from "@/lib/validation/schemas";
 
 export async function POST(req: NextRequest) {
   const payload = await req.json().catch(() => ({}));
-  const guard = guardRequest(req, payload, {
+  const guard = await guardRequest(req, payload, {
     limit: { key: "contact", max: 5, windowMs: 15 * 60 * 1000 },
   });
   if (!guard.ok) return guard.response;

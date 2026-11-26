@@ -7,7 +7,7 @@ export async function GET(
   req: NextRequest,
   context: { params: Promise<{ matchId: string }> },
 ) {
-  const guard = guardRequest(req, {}, { permission: "mom:prepare", csrf: false });
+  const guard = await guardRequest(req, {}, { permission: "mom:prepare", csrf: false });
   if (!guard.ok) return guard.response;
   const { matchId } = await context.params;
   const pdf = await momPdf(matchId);

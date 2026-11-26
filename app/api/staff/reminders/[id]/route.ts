@@ -8,7 +8,7 @@ export async function POST(
   context: { params: Promise<{ id: string }> },
 ) {
   const payload = await req.json().catch(() => ({}));
-  const guard = guardRequest(req, payload, { permission: "mom:prepare" });
+  const guard = await guardRequest(req, payload, { permission: "mom:prepare" });
   if (!guard.ok) return guard.response;
   const { id } = await context.params;
   const reminder = await prisma.reminder.findUnique({ where: { id } });

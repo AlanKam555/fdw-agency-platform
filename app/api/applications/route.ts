@@ -1,11 +1,12 @@
 import { NextRequest } from "next/server";
 import { guardRequest, json, parseBody, zodMessage } from "@/lib/http/api";
+import { publicApplicationBody } from "@/lib/security/registration";
 import { createCandidateApplication } from "@/lib/services/candidates";
 import { candidateApplicationSchema } from "@/lib/validation/schemas";
 
 export async function POST(req: NextRequest) {
   const payload = await req.json().catch(() => ({}));
-  const guard = guardRequest(req, payload, {
+  const guard = await guardRequest(req, payload, {
     limit: { key: "apply", max: 5, windowMs: 15 * 60 * 1000 },
   });
   if (!guard.ok) return guard.response;
@@ -18,6 +19,6 @@ export async function POST(req: NextRequest) {
     actorId,
     fictional: false,
   });
-  if (!result.ok) return json({ error: result.error }, 409);
-  return json({ ok: true, id: result.candidate.id });
+  const ack = publicApplicationBody(result);
+  return json(ack.body, ack.status);
 }

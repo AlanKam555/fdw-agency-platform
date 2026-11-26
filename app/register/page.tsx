@@ -7,9 +7,12 @@ export default function RegisterPage() {
   return (
     <div className="mx-auto max-w-md px-4 py-12">
       <h1 className="text-5xl">Create an account</h1>
-      <p className="mt-3 text-sm text-[var(--ink)]/80">Staff accounts are created by an administrator. This form is for employers and helpers.</p>
+      <p className="mt-3 text-sm text-[var(--ink)]/80">
+        Staff accounts are created by an administrator. This form is for employers and helpers.
+        The response is the same whether or not the email is already registered. Sign in afterwards.
+      </p>
       <div className="card mt-6 p-6">
-        <JsonForm action="/api/auth/register" submitLabel="Create account" refresh={false}>
+        <JsonForm action="/api/auth/register" submitLabel="Create account" refresh={false} success="Check the message below, then sign in.">
           <label className="label">
             I am
             <select className="select" name="role" defaultValue="EMPLOYER">

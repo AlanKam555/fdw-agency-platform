@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { writeAudit } from "@/lib/audit";
+import { brand } from "@/config/brand";
 import { momRules } from "@/config/mom-rules";
 import { buildChecklist, reminderSeeds, type MomPackInput } from "@/lib/mom/checklist";
 import { renderMomPdf } from "@/lib/mom/pdf";
@@ -102,7 +103,7 @@ export async function momPdf(matchId: string) {
   if (!momCase) return null;
   const items = momCase.checklist as Parameters<typeof renderMomPdf>[0]["items"];
   const bytes = await renderMomPdf({
-    agencyName: "Harbourlight Agency",
+    agencyName: brand.legalName,
     helperName: momCase.match.candidate.fullName,
     employerName: momCase.match.employer.fullName,
     generatedOn: new Date().toISOString(),

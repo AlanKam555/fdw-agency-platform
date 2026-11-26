@@ -5,7 +5,7 @@ import { writeAudit } from "@/lib/audit";
 
 export async function POST(req: NextRequest) {
   const payload = await req.json().catch(() => ({}));
-  const guard = guardRequest(req, payload);
+  const guard = await guardRequest(req, payload);
   if (!guard.ok) return guard.response;
   if (guard.session) {
     await writeAudit({

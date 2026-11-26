@@ -12,7 +12,7 @@ const schema = z.object({
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
   const payload = await req.json().catch(() => ({}));
-  const guard = guardRequest(req, payload, { permission: "matching:decide" });
+  const guard = await guardRequest(req, payload, { permission: "matching:decide" });
   if (!guard.ok) return guard.response;
   const parsed = parseBody(schema, payload);
   if (!parsed.success) return json({ error: zodMessage(parsed.error) }, 400);

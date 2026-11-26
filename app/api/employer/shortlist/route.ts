@@ -5,7 +5,7 @@ import { shortlistSchema } from "@/lib/validation/schemas";
 
 export async function POST(req: NextRequest) {
   const payload = await req.json().catch(() => ({}));
-  const guard = guardRequest(req, payload, {
+  const guard = await guardRequest(req, payload, {
     permission: "employer:portal",
     limit: { key: "shortlist", max: 30, windowMs: 15 * 60 * 1000 },
   });

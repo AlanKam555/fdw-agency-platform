@@ -1,9 +1,9 @@
 {
-  "name": "harbourlight",
-  "version": "0.1.0",
+  "name": "fdw-agency-platform",
+  "version": "0.2.0",
   "private": true,
   "license": "MIT",
-  "description": "White-label workspace for a Singapore foreign domestic worker employment agency. Harbourlight is the fictional demo.",
+  "description": "Open-source workspace for a Singapore foreign domestic worker employment agency. Harbourlight is the fictional demo.",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
@@ -35,6 +35,7 @@
     "pdf-lib": "^1.17.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "redis": "^5.8.2",
     "zod": "^3.25.76"
   },
   "devDependencies": {

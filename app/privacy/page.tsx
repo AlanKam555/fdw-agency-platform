@@ -26,7 +26,9 @@ export default function PrivacyPage() {
         Forms that store personal data require a consent checkbox tied to this version of the notice. You can ask staff for access or correction. An administrator can redact a helper profile: documents are deleted, passport and medical fields are wiped, and the account is disabled. Withdrawal of photo consent removes the portrait from the public gallery.
       </p>
       <h2 className="mt-8 text-3xl">How long we keep it</h2>
-      <p className="mt-3 leading-7">{retentionSummary()}</p>
+      <p className="mt-3 leading-7">
+        {retentionSummary()} A scheduled job can apply these windows. It reports counts only until the agency turns enforcement on.
+      </p>
       <h2 className="mt-8 text-3xl">Protection</h2>
       <p className="mt-3 leading-7">
         Passport numbers, FIN, NRIC, and medical notes are encrypted with AES-256-GCM before they are written. Documents sit in private storage and are downloaded with a short-lived signed link or a staff session. Staff reveals of those fields are audited.

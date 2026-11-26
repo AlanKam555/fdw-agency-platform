@@ -23,16 +23,21 @@ export async function createCandidateApplication(
   let userId = context.userId ?? null;
   if (!userId && input.password) {
     const email = input.email.toLowerCase();
+    const passwordHash = await hashPassword(input.password);
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
-      return { ok: false as const, error: "An account with this email already exists. Sign in to continue the application." };
+      return {
+        ok: false as const,
+        code: "duplicate_email" as const,
+        error: "An account with this email already exists. Sign in to continue the application.",
+      };
     }
     const user = await prisma.user.create({
       data: {
         email,
         name: input.fullName,
         role: "CANDIDATE",
-        passwordHash: await hashPassword(input.password),
+        passwordHash,
       },
     });
     userId = user.id;

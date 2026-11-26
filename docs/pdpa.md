@@ -36,4 +36,6 @@ An administrator can redact a helper profile. Redaction deletes stored documents
 
 Passport numbers, FIN, NRIC, and medical notes are encrypted with AES-256-GCM before they are written. Document bytes are encrypted and stored in a private bucket (or a local directory in development). Downloads use a short-lived HMAC link or a staff session, and staff downloads are audited.
 
-These controls support the PDPA security obligation. They do not replace a documented retention job, a data-protection officer, or a contract with the hosting provider. The retention windows above are policy constants. A scheduled deletion job is not included in this MVP and should be added before production use.
+These controls support the PDPA security obligation. They do not replace a data-protection officer or a contract with the hosting provider. The retention windows above are policy constants, not legal advice.
+
+`GET /api/cron/retention` is the scheduled job. It is a dry run until `RETENTION_ENFORCE=true`. See [retention.md](retention.md).

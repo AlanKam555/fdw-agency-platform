@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Fraunces, Outfit } from "next/font/google";
 import { Footer, Header } from "@/components/chrome";
 import { brand } from "@/config/brand";
@@ -25,10 +26,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html
       lang="en-SG"
+      nonce={nonce}
       className={`${outfit.variable} ${fraunces.variable}`}
       style={{
         ["--lagoon" as string]: brand.primary,

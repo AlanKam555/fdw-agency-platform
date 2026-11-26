@@ -1,6 +1,10 @@
+import { brand } from "@/config/brand";
+
 export const PRIVACY_POLICY = {
   version: "HL-PDPA-2026-11",
-  controller: "Harbourlight Agency (fictional demonstration deployment)",
+  controller: brand.fictionalDemo
+    ? `${brand.legalName} (fictional demonstration deployment)`
+    : brand.legalName,
   purposes: [
     "Assessing helper applications and employer requirements",
     "Explaining job-factor matches to agency staff",

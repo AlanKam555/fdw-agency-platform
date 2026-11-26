@@ -2,6 +2,8 @@ import { providerDirectory } from "@/lib/ai/client";
 import { JsonForm } from "@/components/json-form";
 import { requireUser } from "@/lib/auth/current";
 import { brand } from "@/config/brand";
+import { retentionMode } from "@/lib/privacy/retention";
+import { activeRateLimitDriver } from "@/lib/security/rate-limit";
 import { agencyProfile } from "@/lib/services/agency";
 import { momRules } from "@/config/mom-rules";
 
@@ -11,6 +13,7 @@ export default async function SettingsPage() {
   await requireUser(["ADMIN"]);
   const profile = await agencyProfile();
   const providers = providerDirectory();
+  const retention = retentionMode();
   return (
     <div className="grid gap-6">
       <div>
@@ -24,6 +27,11 @@ export default async function SettingsPage() {
         <p>Licence on file: {profile.eaLicenceNo}</p>
         <p>Personnel: {profile.personnel.map((person) => `${person.name} ${person.registrationNo}`).join("; ")}</p>
         <p>Locales: {brand.locales.join(", ")}</p>
+        <p>Rate limiter: {activeRateLimitDriver()}</p>
+        <p>
+          Retention job: {retention.enforce ? "enforcing" : "dry run"}
+          {retention.purgeAudit ? ", including aged audit rows" : ""}.
+        </p>
         <p>
           MOM minimum helper age {momRules.fdw.minAgeYears}, security bond SGD {momRules.securityBond.amountSgd}.{" "}
           {momRules.meta.verificationStatus}.

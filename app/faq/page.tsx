@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { faqs } from "@/content/site";
+import { AGENCY, faqs } from "@/content/site";
 
 export const metadata: Metadata = {
   title: "FAQ",
-  description: "Answers about Harbourlight matching, privacy, and MOM work permit preparation.",
+  description: `Answers about ${AGENCY.name} matching, privacy, and MOM work permit preparation.`,
 };
 
 export default function FaqPage() {

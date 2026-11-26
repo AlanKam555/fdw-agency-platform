@@ -10,7 +10,7 @@ export async function POST(
   context: { params: Promise<{ id: string }> },
 ) {
   const payload = await req.json().catch(() => ({}));
-  const guard = guardRequest(req, payload, { permission: "candidates:sensitive" });
+  const guard = await guardRequest(req, payload, { permission: "candidates:sensitive" });
   if (!guard.ok) return guard.response;
   const parsed = parseBody(sensitiveRevealSchema, payload);
   if (!parsed.success) return json({ error: "Choose a field." }, 400);

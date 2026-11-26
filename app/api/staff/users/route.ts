@@ -7,7 +7,7 @@ import { staffUserSchema } from "@/lib/validation/schemas";
 
 export async function POST(req: NextRequest) {
   const payload = await req.json().catch(() => ({}));
-  const guard = guardRequest(req, payload, { permission: "users:manage" });
+  const guard = await guardRequest(req, payload, { permission: "users:manage" });
   if (!guard.ok) return guard.response;
   const parsed = parseBody(staffUserSchema, payload);
   if (!parsed.success) return json({ error: zodMessage(parsed.error) }, 400);

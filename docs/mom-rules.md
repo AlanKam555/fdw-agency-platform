@@ -1,6 +1,6 @@
 # MOM work permit preparation
 
-Harbourlight prepares a checklist, reminders, and a PDF for one staff-approved match. It does not submit anything to the Ministry of Manpower. Work Permit applications are lodged by a person on [WP Online](https://www.mom.gov.sg/passes-and-permits/work-permit-for-foreign-domestic-worker) with Singpass or CorpPass.
+The app prepares a checklist, reminders, and a PDF for one staff-approved match. It does not submit anything to the Ministry of Manpower. Work Permit applications are lodged by a person on [WP Online](https://www.mom.gov.sg/passes-and-permits/work-permit-for-foreign-domestic-worker) with Singpass or CorpPass.
 
 Every numeric rule lives in `config/mom-rules.ts` and can be overridden with the `MOM_*` variables in `.env.example`. The file is flagged **verify against current MOM guidance**. The values were transcribed on 2026-11-26 from the public pages below. MOM can change them. Operators should re-read those pages before using a pack in a real placement. An environment override does not make a number official.
 

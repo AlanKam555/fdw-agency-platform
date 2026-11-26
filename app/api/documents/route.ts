@@ -21,7 +21,7 @@ const KINDS: DocumentKind[] = [
 export async function POST(req: NextRequest) {
   const form = await req.formData();
   const payload = { csrf: String(form.get("csrf") ?? "") };
-  const guard = guardRequest(req, payload, {
+  const guard = await guardRequest(req, payload, {
     limit: { key: "upload", max: 20, windowMs: 15 * 60 * 1000 },
   });
   if (!guard.ok) return guard.response;

@@ -4,6 +4,7 @@ import { writeAudit } from "@/lib/audit";
 import { deleteObject } from "@/lib/storage/files";
 import { draftMarketingCopy, type PublicBlurbInput } from "@/lib/ai/drafts";
 import { checkAdvertisement, complianceFooter, withComplianceFooter } from "@/lib/marketing/compliance";
+import { brand } from "@/config/brand";
 import { agencyProfile } from "@/lib/services/agency";
 import { PDPA_VERSION } from "@/lib/validation/schemas";
 
@@ -81,7 +82,7 @@ export async function createMarketingDraft(input: {
   ip: string;
 }) {
   let facts: PublicBlurbInput = {
-    fullName: "Harbourlight helpers",
+    fullName: `${brand.name} helpers`,
     nationality: "approved source countries",
     experienceYears: 0,
     skills: [],
@@ -238,7 +239,7 @@ export async function reviewMarketingDraft(input: {
   return { ok: true as const, draft: updated };
 }
 
-export async function redactCandidate(input: { candidateId: string; actorId: string; ip: string }) {
+export async function redactCandidate(input: { candidateId: string; actorId: string | null; ip: string }) {
   const candidate = await prisma.candidate.findUnique({
     where: { id: input.candidateId },
     include: { documents: true },

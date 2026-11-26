@@ -1,11 +1,10 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { json } from "@/lib/http/api";
+import { cronAuthorized } from "@/lib/http/cron";
 
 export async function GET(req: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  const header = req.headers.get("authorization");
-  if (!secret || header !== `Bearer ${secret}`) {
+  if (!cronAuthorized(req.headers.get("authorization"))) {
     return json({ error: "Unauthorised." }, 401);
   }
   const reminders = await prisma.reminder.findMany({

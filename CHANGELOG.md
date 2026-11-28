@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- MOM catalog entries now carry `verifiedOn` (2026-11-28) and a source URL, and still say verify against current MOM guidance. Added renewal age, medical sub-limits and co-payment, levy (integer cents), rest-day minimum, six-monthly medical examination, the SIP arrival-day refusal, and the helper agency-fee cap. A recorded helper fee above the cap is refused.
+- Service contracts, invoices, and payment records are kept for 6 years by default (`RETENTION_FINANCIAL_YEARS`), then the retention job anonymises personal text when `RETENTION_ENFORCE=true`. Amounts stay. A dry run only counts. Expired sessions are still deleted on a dry run.
+- Deployment notes stay host-neutral and add short recipes for Docker Compose, Railway, Render, Fly.io, and AWS. See [docs/deploy.md](docs/deploy.md).
+
 ## 0.6.0 — 2026-11-28
 
 ### Added

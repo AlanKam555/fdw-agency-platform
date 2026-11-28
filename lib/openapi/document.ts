@@ -44,6 +44,7 @@ export const API_OPERATIONS: ApiOperation[] = [
   { method: "get", path: "/api/staff/contracts/{id}", summary: "Read one service contract", auth: "billing:manage" },
   { method: "post", path: "/api/staff/contracts/{id}", summary: "Update a service contract", auth: "billing:manage" },
   { method: "post", path: "/api/staff/contracts/{id}/invoices", summary: "Add an invoice", auth: "billing:manage" },
+  { method: "post", path: "/api/staff/billing/worker-fees", summary: "Record a helper agency fee within the MOM cap", auth: "billing:manage" },
   { method: "post", path: "/api/staff/documents/{id}/review", summary: "Review an uploaded document", auth: "documents:staff" },
   { method: "post", path: "/api/staff/employers/{id}/redact", summary: "Redact a household profile", auth: "candidates:delete" },
   { method: "post", path: "/api/staff/employers/{id}/sensitive", summary: "Reveal an employer NRIC", auth: "employers:read" },

@@ -88,21 +88,22 @@ Tests expect `DATABASE_URL`, `AUTH_SECRET`, and `FIELD_ENCRYPTION_KEY`. GitHub A
 
 `npm run test:e2e` starts the production server. Set `CRON_SECRET`, point storage at a private bucket, and seed the Harbourlight demo first. The demo accounts are not pre-enrolled in TOTP.
 
-## Deploy on Vercel
+## Deploy
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/AlanKam555/fdw-agency-platform&env=DATABASE_URL,AUTH_SECRET,FIELD_ENCRYPTION_KEY,APP_URL,CRON_SECRET&project-name=fdw-agency-platform&repository-name=fdw-agency-platform)
+Each agency chooses its own host. The application does not depend on a particular vendor at runtime. The checklist, and short recipes for Docker Compose on a VPS, Railway, Render, Fly.io, and AWS, are in [docs/deploy.md](docs/deploy.md).
 
-1. Create a Vercel project from this repository and a managed Postgres database (Neon, Supabase, or Vercel Postgres).
-2. Set the environment variables from `.env.example`. Run `npm run secrets:generate` and set `AUTH_SECRET`, `FIELD_ENCRYPTION_KEY`, `CRON_SECRET`, and `TOTP_ENCRYPTION_KEY`. Use `BCRYPT_COST=12`. Leave every AI key empty until you choose a provider. Run `npx prisma migrate deploy` before the new app, not inside the request process.
-3. Set `APP_URL` to the production https origin. CSRF checks compare the request origin with `APP_URL` and with the host the browser requested. Session and CSRF cookies are marked `Secure` when `APP_URL` starts with `https://`. An `http://localhost` value keeps the local demo able to sign in.
-4. Set `STORAGE_DRIVER=s3` and a private bucket (`S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`). Optional: `S3_ENDPOINT` and `S3_FORCE_PATH_STYLE` for R2 or MinIO, `S3_SSE=AES256` or `S3_SSE=aws:kms` with `S3_KMS_KEY_ID`. The app refuses to start in production when the driver is local, unless `ALLOW_LOCAL_STORAGE=true`.
-5. For more than one instance, set `RATE_LIMIT_DRIVER=upstash` (or `redis`) and the matching URL and token. Sign-in lockout uses that same store. The defaults stay in memory. `MFA_GRACE_DAYS` defaults to 7. `TOTP_ENCRYPTION_KEY` is optional and otherwise uses `FIELD_ENCRYPTION_KEY`.
-6. Build command: `npm run build` (it runs `prisma generate`). Release command or a one-off job: `npx prisma migrate deploy`.
-7. Do not run the seed against production.
-8. `vercel.json` schedules `GET /api/cron/reminders` and `GET /api/cron/retention`. Set `CRON_SECRET`. Vercel sends it as `Authorization: Bearer <CRON_SECRET>`. Reminders are a dry run until `REMINDERS_SEND=true`, and a type must be opted in (or that reminder approved) before it is eligible. The default driver is `console`. See `.env.example` for SMTP, Resend, and SES. The retention route is a dry run until `RETENTION_ENFORCE=true`. See [docs/retention.md](docs/retention.md).
-9. Re-read the MOM pages cited in `config/mom-rules.ts` and update the numbers. They are flagged `verify against current MOM guidance`.
+On every host:
 
-The app binds to `0.0.0.0` and the platform port. No background worker is required for the request path. Cron routes are the only scheduled work, and an external caller has to invoke them.
+1. Run `npm run secrets:generate` and store `AUTH_SECRET`, `FIELD_ENCRYPTION_KEY`, `FIELD_ENCRYPTION_KEY_ID`, `FIELD_ENCRYPTION_KEYS`, `CRON_SECRET`, and `TOTP_ENCRYPTION_KEY` in that host's secret manager. Use `BCRYPT_COST=12`. Leave every AI key empty until you choose a provider.
+2. Run `npm run migrate` (`prisma migrate deploy`) as its own step, before the new app serves traffic. The process does not migrate on start.
+3. Point `DATABASE_URL` at Postgres. For more than one instance, set `RATE_LIMIT_DRIVER=upstash` or `redis`.
+4. Set `STORAGE_DRIVER=s3` and a private S3-compatible bucket with block public access. The app refuses to start in production on the local driver unless `ALLOW_LOCAL_STORAGE=true`.
+5. Call `GET /api/cron/reminders` and `GET /api/cron/retention` with `Authorization: Bearer $CRON_SECRET`. `vercel.json` is only an example schedule for a host that reads it. Retention stays a dry run until `RETENTION_ENFORCE=true`. See [docs/retention.md](docs/retention.md).
+6. Set `TRUSTED_PROXY_HOPS` or `CLIENT_IP_HEADER` for that host's proxy. Prefer a Singapore region when the agency wants the data to stay in Singapore.
+7. Set `APP_URL` to the production https origin. Do not run the seed against production.
+8. Re-read the MOM pages cited in `config/mom-rules.ts`. They are flagged `verify against current MOM guidance`.
+
+The app binds to `0.0.0.0` and the platform port. No background worker is required for the request path.
 
 ## Environment
 

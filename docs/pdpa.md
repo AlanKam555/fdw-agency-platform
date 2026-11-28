@@ -41,6 +41,7 @@ Defaults in `lib/privacy/policy.ts`:
 - expired or revoked sessions: 30 days
 - embedding cache: 7 days, including on a dry run
 - audit log: 2 years
+- service contracts, invoices, and payment records: 6 years, then personal data is anonymised and amounts are kept. See [retention.md](retention.md). This default is not legal advice.
 
 An administrator can redact a helper profile or a household. Redaction clears direct identifiers, notes, draft text, match explanations, and outcome notes. Match scores and placement category codes stay so the fairness audit still has non-identifying counts. Documents are deleted from the object store, or the key is queued when the delete fails. The audit log records that the redaction happened without copying the wiped values.
 

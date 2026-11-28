@@ -3,7 +3,7 @@ import type { CandidateStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { writeAudit } from "@/lib/audit";
 import { logEvent } from "@/lib/log";
-import { PRIVACY_POLICY } from "@/lib/privacy/policy";
+import { financialRecordYears, PRIVACY_POLICY } from "@/lib/privacy/policy";
 import { redactCandidate, redactEmployer } from "@/lib/privacy/redact";
 import { reconcileDeletionOutbox } from "@/lib/storage/deletion-outbox";
 
@@ -30,6 +30,10 @@ export type RetentionCounts = {
   marketingDrafts: number;
   testimonials: number;
   sessions: number;
+  serviceContracts: number;
+  invoices: number;
+  payments: number;
+  workerFees: number;
 };
 
 export type RetentionReport = {
@@ -55,7 +59,23 @@ const EMPTY: RetentionCounts = {
   marketingDrafts: 0,
   testimonials: 0,
   sessions: 0,
+  serviceContracts: 0,
+  invoices: 0,
+  payments: 0,
+  workerFees: 0,
 };
+
+export function yearsBefore(now: Date, years: number): Date {
+  return new Date(Date.UTC(
+    now.getUTCFullYear() - years,
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    now.getUTCHours(),
+    now.getUTCMinutes(),
+    now.getUTCSeconds(),
+    now.getUTCMilliseconds(),
+  ));
+}
 
 export function daysAgo(now: Date, days: number): Date {
   return new Date(now.getTime() - days * DAY_MS);
@@ -129,6 +149,48 @@ async function purgeAuditPrefix(dueBefore: Date, limit: number): Promise<number>
   return removed + prefix.length;
 }
 
+async function anonymiseFinancial(dueBefore: Date, now: Date): Promise<
+  Pick<RetentionCounts, "serviceContracts" | "invoices" | "payments" | "workerFees">
+> {
+  const where = { anonymisedAt: null, createdAt: { lte: dueBefore } };
+  const [contracts, invoices, payments, fees] = await Promise.all([
+    prisma.serviceContract.findMany({ where, select: { id: true }, orderBy: { createdAt: "asc" }, take: RETENTION_BATCH }),
+    prisma.invoice.findMany({ where, select: { id: true }, orderBy: { createdAt: "asc" }, take: RETENTION_BATCH }),
+    prisma.paymentRecord.findMany({ where, select: { id: true }, orderBy: { createdAt: "asc" }, take: RETENTION_BATCH }),
+    prisma.workerFee.findMany({ where, select: { id: true }, orderBy: { createdAt: "asc" }, take: RETENTION_BATCH }),
+  ]);
+  const result = { serviceContracts: 0, invoices: 0, payments: 0, workerFees: 0 };
+  if (contracts.length) {
+    const updated = await prisma.serviceContract.updateMany({
+      where: { id: { in: contracts.map((row) => row.id) } },
+      data: { title: "Anonymised", notes: "", anonymisedAt: now },
+    });
+    result.serviceContracts = updated.count;
+  }
+  if (invoices.length) {
+    const updated = await prisma.invoice.updateMany({
+      where: { id: { in: invoices.map((row) => row.id) } },
+      data: { notes: "", anonymisedAt: now },
+    });
+    result.invoices = updated.count;
+  }
+  if (payments.length) {
+    const updated = await prisma.paymentRecord.updateMany({
+      where: { id: { in: payments.map((row) => row.id) } },
+      data: { reference: "", notes: "", anonymisedAt: now },
+    });
+    result.payments = updated.count;
+  }
+  if (fees.length) {
+    const updated = await prisma.workerFee.updateMany({
+      where: { id: { in: fees.map((row) => row.id) } },
+      data: { candidateId: null, anonymisedAt: now },
+    });
+    result.workerFees = updated.count;
+  }
+  return result;
+}
+
 export async function runRetention(options?: {
   now?: Date;
   enforce?: boolean;
@@ -153,6 +215,8 @@ export async function runRetention(options?: {
   const sessionBefore = daysAgo(now, rules.sessionDays);
   const cacheBefore = daysAgo(now, rules.embeddingCacheDays);
   const unverifiedBefore = daysAgo(now, rules.unverifiedAccountDays);
+  const financialBefore = yearsBefore(now, financialRecordYears());
+  const financialWhere = { anonymisedAt: null, createdAt: { lte: financialBefore } };
   const unverifiedWhere = {
     emailVerifiedAt: null,
     role: { in: ["EMPLOYER", "CANDIDATE"] as ["EMPLOYER", "CANDIDATE"] },
@@ -187,6 +251,10 @@ export async function runRetention(options?: {
     testimonialCount,
     sessionCount,
     unverifiedCount,
+    contractCount,
+    invoiceCount,
+    paymentCount,
+    workerFeeCount,
   ] = await Promise.all([
     prisma.enquiry.count({ where: { createdAt: { lt: enquiryBefore } } }),
     prisma.candidate.count({ where: candidateWhere }),
@@ -210,6 +278,10 @@ export async function runRetention(options?: {
       where: { OR: [{ expiresAt: { lt: sessionBefore } }, { revokedAt: { lt: sessionBefore } }] },
     }),
     prisma.user.count({ where: unverifiedWhere }),
+    prisma.serviceContract.count({ where: financialWhere }),
+    prisma.invoice.count({ where: financialWhere }),
+    prisma.paymentRecord.count({ where: financialWhere }),
+    prisma.workerFee.count({ where: financialWhere }),
   ]);
 
   const counts: RetentionCounts = {
@@ -224,6 +296,10 @@ export async function runRetention(options?: {
     marketingDrafts: draftCount,
     testimonials: testimonialCount,
     sessions: sessionCount,
+    serviceContracts: contractCount,
+    invoices: invoiceCount,
+    payments: paymentCount,
+    workerFees: workerFeeCount,
   };
   const processed: RetentionCounts = { ...EMPTY };
   const sessions = await purgeStaleSessions(now);
@@ -250,7 +326,7 @@ export async function runRetention(options?: {
       counts,
       processed,
       sessions,
-      note: "Dry run for personal data. Counts are records past the policy windows. Set RETENTION_ENFORCE=true to redact and delete. Object-store retries still run. Expired sessions, and revoked sessions past the retention window, are deleted on every run. See docs/retention.md.",
+      note: "Dry run for personal data. Counts are records past the policy windows. Set RETENTION_ENFORCE=true to redact and delete. Financial personal data is anonymised only when enforcement is on. Object-store retries still run. Expired sessions, and revoked sessions past the retention window, are deleted on every run. See docs/retention.md.",
     };
   }
 
@@ -371,6 +447,11 @@ export async function runRetention(options?: {
     });
     processed.testimonials = deleted.count;
   }
+  const financial = await anonymiseFinancial(financialBefore, now);
+  processed.serviceContracts = financial.serviceContracts;
+  processed.invoices = financial.invoices;
+  processed.payments = financial.payments;
+  processed.workerFees = financial.workerFees;
   await prisma.embeddingCache.deleteMany({ where: { createdAt: { lt: cacheBefore } } });
 
   if (purgeAudit) processed.auditLogs = await purgeAuditPrefix(auditBefore, RETENTION_BATCH);
@@ -400,7 +481,11 @@ export async function runRetention(options?: {
     candidateCount > candidates.length ||
     auditCount > RETENTION_BATCH ||
     employerCount > employers.length ||
-    unverifiedCount > unverifiedUsers.length;
+    unverifiedCount > unverifiedUsers.length ||
+    contractCount > financial.serviceContracts ||
+    invoiceCount > financial.invoices ||
+    paymentCount > financial.payments ||
+    workerFeeCount > financial.workerFees;
 
   return {
     asOf: now.toISOString(),
@@ -410,6 +495,6 @@ export async function runRetention(options?: {
     counts,
     processed,
     sessions,
-    note: "Due helper and household profiles were redacted. Unconfirmed accounts past the window were removed when they had no file beyond an application. Narrative fields past the deployed window were cleared. Match scores and outcome category codes were kept. Audit rows are removed only when purge is also on, and only as a hash-chain prefix. Expired sessions, and revoked sessions past the retention window, are deleted on every run. See docs/retention.md.",
+    note: "Due helper and household profiles were redacted. Unconfirmed accounts past the window were removed when they had no file beyond an application. Narrative fields past the deployed window were cleared. Match scores and outcome category codes were kept. Personal data on service contracts, invoices, payments, and helper fees past the financial window was anonymised. Amounts were kept. Audit rows are removed only when purge is also on, and only as a hash-chain prefix. Expired sessions, and revoked sessions past the retention window, are deleted on every run. See docs/retention.md.",
   };
 }

@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db";
 import { writeAudit } from "@/lib/audit";
 import { brand } from "@/config/brand";
+import { assessRestDaysPerMonth, sipAttendanceAllowed } from "@/lib/mom/compliance";
+import { completedYears } from "@/lib/mom/dates";
 import { effectiveMomRules } from "@/lib/mom/effective-rules";
 import { buildChecklist, reminderSeeds, type MomPackInput } from "@/lib/mom/checklist";
 import { renderMomPdf } from "@/lib/mom/pdf";
@@ -49,6 +51,15 @@ export async function prepareMomCase(input: {
     attestation: input.attestation,
   };
   const rules = await effectiveMomRules();
+  const rest = assessRestDaysPerMonth(input.attestation.restDaysPerMonth, rules);
+  if (!rest.ok) return { ok: false as const, error: rest.detail };
+  if (
+    input.attestation.arrivalOn &&
+    input.attestation.sipOn &&
+    !sipAttendanceAllowed(input.attestation.arrivalOn, input.attestation.sipOn, rules)
+  ) {
+    return { ok: false as const, error: "SIP cannot be attended on the arrival day." };
+  }
   const checklist = buildChecklist(packInput, rules);
   const dated = scheduleDatedReminders({
     arrivalOn: input.attestation.arrivalOn ?? null,
@@ -60,6 +71,9 @@ export async function prepareMomCase(input: {
     medicalExamDays: rules.medicalExam.deadlineDaysAfterArrival,
     sipDays: rules.sip.deadlineDaysAfterArrivalExcludingSundayAndHolidays,
     firstTimeInSingapore: match.candidate.firstTimeInSingapore,
+    helperAgeYears: completedYears(match.candidate.dateOfBirth, input.attestation.proposedSubmissionDate),
+    sixMonthlyExamMonths: rules.sixMonthlyExam.intervalMonths,
+    sixMonthlyExamExemptFromAge: rules.sixMonthlyExam.exemptFromAgeYears,
   });
   const reminders = withDueDates(reminderSeeds(checklist.items), dated);
 

@@ -16,6 +16,9 @@ export type RuleRow = {
   unit: string;
   kind: RuleDefinition["kind"];
   sourceUrl: string;
+  sourceUrls: string[];
+  verificationStatus: RuleDefinition["verificationStatus"];
+  catalogVerifiedOn: string;
   catalogValue: string;
   value: string;
   override: string | null;
@@ -49,7 +52,7 @@ export async function momRuleRows(now = new Date()): Promise<RuleRow[]> {
   }
   return MOM_RULE_DEFINITIONS.map((definition) => {
     const state = byKey.get(definition.key);
-    const verifiedAt = state?.lastVerifiedAt ?? transcribedOn(base.meta.lastTranscribed);
+    const verifiedAt = state?.lastVerifiedAt ?? transcribedOn(definition.verifiedOn);
     const status = ruleReviewStatus({
       lastVerified: verifiedAt,
       verifiedBy: state?.verifiedById ?? null,
@@ -62,6 +65,9 @@ export async function momRuleRows(now = new Date()): Promise<RuleRow[]> {
       unit: definition.unit,
       kind: definition.kind,
       sourceUrl: state?.sourceUrl || definition.sourceUrl,
+      sourceUrls: definition.sourceUrls ?? [definition.sourceUrl],
+      verificationStatus: definition.verificationStatus,
+      catalogVerifiedOn: definition.verifiedOn,
       catalogValue: definition.read(base),
       value: definition.read(effective),
       override: state?.overrideJson ?? null,
@@ -154,6 +160,9 @@ export async function reviewMomRule(input: {
   const value = storedOverride(definition.kind, raw);
   if (definition.kind === "int" && !Number.isInteger(value)) {
     return { ok: false as const, error: "That value is not valid for this rule." };
+  }
+  if (definition.kind === "day" && !/^\d{4}-\d{2}-\d{2}$/.test(String(value))) {
+    return { ok: false as const, error: "Use YYYY-MM-DD for this rule." };
   }
   if (definition.kind === "list" && (!Array.isArray(value) || value.length === 0)) {
     return { ok: false as const, error: "That value is not valid for this rule." };

@@ -1,5 +1,16 @@
 import { momRules, type MomRules } from "@/config/mom-rules";
 import {
+  assessRestDaysPerMonth,
+  assessWorkerAgencyFee,
+  levyRate,
+  medicalSubLimitsMeetMinimum,
+  sgdFromCents,
+  sixMonthlyExamRequired,
+  sipAttendanceAllowed,
+  type PermitAction,
+} from "@/lib/mom/compliance";
+import { completedYears } from "@/lib/mom/dates";
+import {
   evaluateEmployer,
   evaluateFdw,
   securityBondRequired,
@@ -54,6 +65,14 @@ export type MomPackInput = {
     salaryAgreedSgd: number;
     restDaysPerMonth: number;
     proposedSubmissionDate: Date;
+    arrivalOn?: Date | null;
+    permitAction?: PermitAction;
+    sipOn?: Date | null;
+    inpatientSubLimitSgd?: number | null;
+    daySurgerySubLimitSgd?: number | null;
+    workerFeeSgd?: number | null;
+    contractMonths?: number | null;
+    workPassMonths?: number | null;
   };
 };
 
@@ -72,7 +91,10 @@ export function buildChecklist(
   const items: ChecklistItem[] = [];
   const on = input.attestation.proposedSubmissionDate;
 
-  for (const check of evaluateFdw({ ...input.fdw, on }, rules)) {
+  for (const check of evaluateFdw(
+    { ...input.fdw, on, permitAction: input.attestation.permitAction ?? "new" },
+    rules,
+  )) {
     items.push({
       id: check.id,
       section: "fdw_eligibility",
@@ -169,13 +191,29 @@ export function buildChecklist(
     sourceUrl: source(rules, "Security bond"),
   });
 
+  const subLimitsRecorded =
+    input.attestation.inpatientSubLimitSgd != null && input.attestation.daySurgerySubLimitSgd != null;
+  const subLimits = subLimitsRecorded
+    ? medicalSubLimitsMeetMinimum(
+        {
+          inpatientCents: (input.attestation.inpatientSubLimitSgd ?? 0) * 100,
+          daySurgeryCents: (input.attestation.daySurgerySubLimitSgd ?? 0) * 100,
+        },
+        rules,
+      )
+    : null;
   items.push({
     id: "medical_insurance",
     section: "before_arrival",
-    status: input.attestation.medicalInsuranceArranged ? "pass" : "fail",
+    status: !input.attestation.medicalInsuranceArranged
+      ? "fail"
+      : subLimits && !subLimits.ok
+        ? "fail"
+        : "pass",
     label: `Medical insurance annual claim limit at least SGD ${rules.insurance.medicalAnnualClaimLimitSgd.toLocaleString("en-SG")}`,
-    detail:
-      "Cost cannot be passed to the helper. Confirm sub-limits also meet the minimum. Verify the enhanced medical insurance stages on the MOM page.",
+    detail: subLimits
+      ? `${subLimits.detail} The premium cannot be passed to the helper.`
+      : `The annual limit is at least SGD ${rules.insurance.medicalAnnualClaimLimitSgd.toLocaleString("en-SG")}. Inpatient and day surgery each need their own sub-limit of at least that amount. From ${rules.insurance.coPaymentEffectiveFrom}, the insurer pays ${rules.insurance.coPaymentInsurerPercent}% and the employer pays ${rules.insurance.coPaymentEmployerPercent}% of a claim above S$${sgdFromCents(rules.insurance.coPaymentThresholdCents)}. The premium cannot be passed to the helper.`,
     sourceUrl: source(rules, "Insurance"),
   });
 
@@ -190,12 +228,17 @@ export function buildChecklist(
   });
 
   if (rules.sip.requiredForFirstTimeFdw && input.fdw.firstTimeInSingapore) {
+    const arrival = input.attestation.arrivalOn ?? null;
+    const sipOn = input.attestation.sipOn ?? null;
+    const clash = arrival != null && sipOn != null && !sipAttendanceAllowed(arrival, sipOn, rules);
     items.push({
       id: "sip",
       section: "after_arrival",
-      status: "reminder",
+      status: clash ? "fail" : "reminder",
       label: "Settling-in Programme",
-      detail: `First-time helper: register the SIP within ${rules.sip.deadlineDaysAfterArrivalExcludingSundayAndHolidays} days of arrival, excluding Sunday and public holidays. She should not attend on the arrival day, and she can start work only after SIP. Employer bears the fee.`,
+      detail: clash
+        ? "SIP cannot be attended on the arrival day itself."
+        : `First-time helper: register the SIP within ${rules.sip.deadlineDaysAfterArrivalExcludingSundayAndHolidays} days of arrival, excluding Sunday and public holidays. SIP cannot be attended on the arrival day itself. She can start work only after SIP. The employer bears the fee.`,
       sourceUrl: source(rules, "Settling-in"),
     });
   }
@@ -222,16 +265,66 @@ export function buildChecklist(
     });
   }
 
+  const rest = assessRestDaysPerMonth(input.attestation.restDaysPerMonth, rules);
   items.push({
     id: "salary_rest",
     section: "before_submission",
-    status:
-      input.attestation.salaryAgreedSgd > 0 && input.attestation.restDaysPerMonth > 0
-        ? "pass"
-        : "attest",
+    status: input.attestation.salaryAgreedSgd > 0 && rest.ok ? "pass" : "fail",
     label: "Agreed salary and rest days recorded for the staff submission",
-    detail: `Salary on the helper profile is SGD ${input.fdw.salaryExpectationSgd}. Staff recorded agreed salary SGD ${input.attestation.salaryAgreedSgd} and ${input.attestation.restDaysPerMonth} rest days per month. MOM requires salary to be paid on time. This is a record for staff, not a MOM submission.`,
-    sourceUrl: source(rules, "Security bond"),
+    detail: `Salary on the helper profile is SGD ${input.fdw.salaryExpectationSgd}. Staff recorded agreed salary SGD ${input.attestation.salaryAgreedSgd}. ${rest.detail}`,
+    sourceUrl: source(rules, "Rest days"),
+  });
+
+  const age = completedYears(input.fdw.dateOfBirth, on);
+  const sixMe = sixMonthlyExamRequired(age, rules);
+  items.push({
+    id: "six_monthly_exam",
+    section: "after_arrival",
+    status: "reminder",
+    label: "Six-monthly medical examination",
+    detail: sixMe
+      ? `During employment, send her for the 6ME every ${rules.sixMonthlyExam.intervalMonths} months. Completed age on the proposed date is ${age}.`
+      : `Completed age is ${age}. Helpers aged ${rules.sixMonthlyExam.exemptFromAgeYears} and older are exempt from the 6ME and only need a medical examination when the Work Permit is renewed.`,
+    sourceUrl: source(rules, "Six-monthly"),
+  });
+
+  const firstLevy = levyRate({ helperNumber: 1, concessionary: false }, rules);
+  const nextLevy = levyRate({ helperNumber: 2, concessionary: false }, rules);
+  const concession = levyRate({ helperNumber: 1, concessionary: true }, rules);
+  items.push({
+    id: "levy",
+    section: "agency_boundary",
+    status: "info",
+    label: "Foreign domestic worker levy",
+    detail: `First helper S$${sgdFromCents(firstLevy.monthlyCents)} a month (S$${sgdFromCents(firstLevy.dailyCents)} a day). Each subsequent helper S$${sgdFromCents(nextLevy.monthlyCents)} a month (S$${sgdFromCents(nextLevy.dailyCents)} a day). Concessionary levy S$${sgdFromCents(concession.monthlyCents)} a month (S$${sgdFromCents(concession.dailyCents)} a day), capped at ${rules.levy.concessionaryHelperCap} helpers. For a first-time helper the levy starts on day ${rules.levy.firstTimeStartDayInclusive} counting the arrival date. Otherwise it starts the day after arrival. Pay by the ${rules.levy.paymentDayOfFollowingMonth}th of the following month. Amounts are stored as integer cents.`,
+    sourceUrl: source(rules, "Levy"),
+  });
+
+  const feeRecorded =
+    input.attestation.workerFeeSgd != null &&
+    input.attestation.contractMonths != null &&
+    input.attestation.workPassMonths != null;
+  const fee = feeRecorded
+    ? assessWorkerAgencyFee(
+        {
+          monthlySalaryCents: input.attestation.salaryAgreedSgd * 100,
+          contractMonths: input.attestation.contractMonths ?? 0,
+          workPassMonths: input.attestation.workPassMonths ?? 0,
+          feeCents: (input.attestation.workerFeeSgd ?? 0) * 100,
+        },
+        rules,
+      )
+    : null;
+  items.push({
+    id: "ea_fee",
+    section: "before_submission",
+    status: fee && !fee.ok ? "fail" : "info",
+    label: "Agency fee charged to the helper",
+    detail: fee
+      ? fee.warning ??
+        `Recorded fee S$${sgdFromCents(fee.feeCents)} is within the cap of S$${sgdFromCents(fee.capCents)} (${fee.salaryMonths} month(s) of fixed salary). If the employer terminates within ${rules.eaFee.earlyTerminationWithinMonths} months, refund ${rules.eaFee.earlyTerminationRefundPercent}% of the fee collected (S$${sgdFromCents(fee.earlyTerminationRefundCents)}).`
+      : `The fee charged to the helper is at most ${rules.eaFee.maxSalaryMonthsPerYear} month of fixed salary for each year of the work pass or the contract, whichever is shorter, and not more than ${rules.eaFee.maxSalaryMonths} months. If the employer terminates within ${rules.eaFee.earlyTerminationWithinMonths} months, refund ${rules.eaFee.earlyTerminationRefundPercent}% of the agency fee collected. A billing record above the cap is refused.`,
+    sourceUrl: source(rules, "Agency fee"),
   });
 
   items.push({

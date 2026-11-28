@@ -66,7 +66,7 @@ export async function renderMomPdf(summary: PdfSummary): Promise<Uint8Array> {
   );
   y -= 8;
   draw(
-    `Rule values were transcribed ${summary.rules.meta.lastTranscribed} and are flagged: ${summary.rules.meta.verificationStatus}.`,
+    `Rule values were transcribed ${summary.rules.meta.lastTranscribed}, catalog checked ${summary.rules.meta.verifiedOn}, and are flagged: ${summary.rules.meta.verificationStatus}.`,
     10,
   );
   y -= 8;

@@ -1,4 +1,5 @@
 import { momRules, type MomRules, countryOnList } from "@/config/mom-rules";
+import { fdwAgeBounds, type PermitAction } from "@/lib/mom/compliance";
 import { addWorkingDays, completedYears, onOrAfter } from "@/lib/mom/dates";
 
 export type FdwEligibilityInput = {
@@ -7,6 +8,8 @@ export type FdwEligibilityInput = {
   educationYears: number;
   sex: "FEMALE" | "MALE" | "UNSPECIFIED";
   on?: Date;
+  /** New applications stay 23 to below 50. A renewal may continue until below 60. */
+  permitAction?: PermitAction;
 };
 
 export type EmployerEligibilityInput = {
@@ -32,16 +35,21 @@ export function evaluateFdw(
 ): EligibilityCheck[] {
   const on = input.on ?? new Date();
   const age = completedYears(input.dateOfBirth, on);
+  const action = input.permitAction ?? "new";
+  const bounds = fdwAgeBounds(action, rules);
   const checks: EligibilityCheck[] = [
     {
       id: "fdw_min_age",
-      status: age >= rules.fdw.minAgeYears ? "pass" : "fail",
-      detail: `Completed age is ${age}. Configured minimum is ${rules.fdw.minAgeYears}.`,
+      status: age >= bounds.min ? "pass" : "fail",
+      detail: `Completed age is ${age}. Configured minimum is ${bounds.min}.`,
     },
     {
       id: "fdw_max_age",
-      status: age < rules.fdw.maxAgeYearsExclusive ? "pass" : "fail",
-      detail: `Completed age is ${age}. Configured rule is below ${rules.fdw.maxAgeYearsExclusive}.`,
+      status: age < bounds.maxExclusive ? "pass" : "fail",
+      detail:
+        action === "renewal"
+          ? `Completed age is ${age}. A renewal may continue until below ${rules.fdw.renewalMaxAgeYearsExclusive}. A new application must still be below ${rules.fdw.maxAgeYearsExclusive}.`
+          : `Completed age is ${age}. A new application must be below ${rules.fdw.maxAgeYearsExclusive}. A helper aged ${rules.fdw.maxAgeYearsExclusive} or older may renew until below ${rules.fdw.renewalMaxAgeYearsExclusive}.`,
     },
     {
       id: "fdw_source_country",

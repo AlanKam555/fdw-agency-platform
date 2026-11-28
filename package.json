@@ -30,7 +30,7 @@
     "@fastify/busboy": "3.2.2"
   },
   "dependencies": {
-    "@ai-sdk/amazon-bedrock": "^3.0.148",
+    "@ai-sdk/amazon-bedrock": "^5.0.147",
     "@ai-sdk/anthropic": "^2",
     "@ai-sdk/google": "^2",
     "@ai-sdk/openai": "^2",

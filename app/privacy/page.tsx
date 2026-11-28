@@ -7,7 +7,7 @@ export default function PrivacyPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="text-5xl">Privacy notice</h1>
-      <p className="mt-3 text-sm text-[var(--brass)]">Version {PRIVACY_POLICY.version}</p>
+      <p className="mt-3 text-sm text-[var(--brass-ink)]">Version {PRIVACY_POLICY.version}</p>
       <p className="mt-4 leading-7">
         {PRIVACY_POLICY.controller} handles personal data for the purposes below. This notice is an operational summary for the product, not legal advice under the Personal Data Protection Act 2012.
       </p>

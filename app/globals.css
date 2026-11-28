@@ -6,6 +6,8 @@
   --lagoon: #0e3b37;
   --lagoon-2: #1f6a62;
   --brass: #a86432;
+  /* Darker than the brand accent so small text clears WCAG AA on --paper and --card. */
+  --brass-ink: #6f3b12;
   --card: #fffaf3;
   --line: #e4d5c2;
   --danger: #8d2f2f;
@@ -52,7 +54,12 @@ a { color: inherit; }
 
 .btn:disabled { opacity: 0.6; }
 .btn.secondary { background: transparent; color: var(--lagoon); border: 1px solid var(--lagoon); }
-.btn.brass { background: var(--brass); }
+.btn.brass { background: var(--brass-ink); color: #f7f1e6; }
+
+:focus-visible {
+  outline: 3px solid var(--brass-ink);
+  outline-offset: 3px;
+}
 
 .field, .area, .select {
   width: 100%;

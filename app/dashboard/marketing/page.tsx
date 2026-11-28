@@ -79,13 +79,13 @@ export default async function MarketingPage() {
       </section>
       {drafts.map((draft) => (
         <article key={draft.id} className="card p-5">
-          <p className="text-xs uppercase tracking-wide text-[var(--brass)]">
+          <p className="text-xs uppercase tracking-wide text-[var(--brass-ink)]">
             {draft.kind} · {draft.status} · {draft.source}
           </p>
           <h2 className="text-2xl">{draft.title}</h2>
           {draft.candidate ? <p className="text-sm">{draft.candidate.fullName}</p> : null}
           <p className="mt-2 whitespace-pre-wrap text-sm leading-6">{draft.body}</p>
-          {draft.cautions ? <p className="mt-2 text-sm text-[var(--brass)]">{draft.cautions}</p> : null}
+          {draft.cautions ? <p className="mt-2 text-sm text-[var(--brass-ink)]">{draft.cautions}</p> : null}
           {draft.status === "DRAFT" ? (
             <div className="mt-3 flex flex-wrap gap-3">
               <JsonForm action={`/api/staff/marketing/${draft.id}`} submitLabel="Approve">

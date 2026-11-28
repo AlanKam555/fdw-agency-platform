@@ -4,14 +4,15 @@ import type { Role } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { logEvent } from "@/lib/log";
 import { writeAudit } from "@/lib/audit";
+import { idleTimeoutMs, sessionAbsoluteSeconds } from "@/lib/auth/session-policy";
 import {
   createSessionToken,
-  SESSION_MAX_AGE_SECONDS,
   verifySessionToken,
   type SessionPayload,
 } from "@/lib/auth/session";
 
-const SEEN_REFRESH_MS = 5 * 60 * 1000;
+/** Last-seen writes are debounced. Idle checks can be early by at most this long. */
+const SEEN_REFRESH_MS = 60 * 1000;
 
 export type SessionUser = {
   id: string;
@@ -26,6 +27,7 @@ export type SessionUser = {
 export type SessionResolution =
   | { kind: "anonymous" }
   | { kind: "disabled"; userId: string }
+  | { kind: "stale" }
   | { kind: "active"; payload: SessionPayload; user: SessionUser };
 
 export function hashSessionId(sid: string): string {
@@ -55,7 +57,8 @@ export async function issueSession(input: {
 }): Promise<{ token: string; sid: string }> {
   const now = input.now ?? Date.now();
   const sid = randomBytes(32).toString("base64url");
-  const exp = Math.floor(now / 1000) + SESSION_MAX_AGE_SECONDS;
+  const lifetime = sessionAbsoluteSeconds();
+  const exp = Math.floor(now / 1000) + lifetime;
   await prisma.session.create({
     data: {
       tokenHash: hashSessionId(sid),
@@ -72,35 +75,59 @@ export async function issueSession(input: {
     csrf: input.csrf,
     sid,
     now,
+    lifetimeSeconds: lifetime,
   });
   return { token, sid };
 }
 
-export async function resolveRequestSession(token: string | undefined | null): Promise<SessionResolution> {
+export async function resolveRequestSession(
+  token: string | undefined | null,
+  options?: { now?: number; ip?: string | null },
+): Promise<SessionResolution> {
+  if (!token) return { kind: "anonymous" };
+  const now = options?.now ?? Date.now();
   let payload: SessionPayload | null = null;
   try {
-    payload = verifySessionToken(token);
+    payload = verifySessionToken(token, now);
   } catch {
-    return { kind: "anonymous" };
+    return { kind: "stale" };
   }
-  if (!payload) return { kind: "anonymous" };
+  if (!payload) return { kind: "stale" };
 
   const row = await prisma.session.findUnique({
     where: { tokenHash: hashSessionId(payload.sid) },
     include: { user: { select: userSelect } },
   });
-  if (!row || row.revokedAt || row.expiresAt.getTime() <= Date.now() || row.userId !== payload.sub) {
-    return { kind: "anonymous" };
+  if (!row || row.userId !== payload.sub || row.revokedAt || row.expiresAt.getTime() <= now) {
+    return { kind: "stale" };
   }
   if (row.user.disabledAt) {
     return { kind: "disabled", userId: row.user.id };
   }
 
-  if (Date.now() - row.lastSeenAt.getTime() >= SEEN_REFRESH_MS) {
+  if (now - row.lastSeenAt.getTime() >= idleTimeoutMs(row.user.role)) {
+    const revoked = await prisma.session.updateMany({
+      where: { id: row.id, revokedAt: null },
+      data: { revokedAt: new Date(now) },
+    });
+    if (revoked.count) {
+      await writeAudit({
+        actorId: row.userId,
+        action: "auth.session_idle",
+        entityType: "Session",
+        entityId: row.id,
+        metadata: { role: row.user.role },
+        ip: options?.ip,
+      });
+    }
+    return { kind: "stale" };
+  }
+
+  if (now - row.lastSeenAt.getTime() >= SEEN_REFRESH_MS) {
     await prisma.session
       .updateMany({
         where: { id: row.id, revokedAt: null },
-        data: { lastSeenAt: new Date() },
+        data: { lastSeenAt: new Date(now) },
       })
       .catch(() => undefined);
   }

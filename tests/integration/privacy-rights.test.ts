@@ -201,6 +201,30 @@ describe("data-subject rights, budget, and audit chain", () => {
     }
   });
 
+  it("keeps the chain valid after the acting account is deleted", async () => {
+    const user = await prisma.user.create({
+      data: {
+        email: `${stamp}-actor@harbourlight.example`,
+        name: "Chain Actor",
+        role: "STAFF",
+        passwordHash: "not-used",
+      },
+    });
+    await writeAudit({
+      actorId: user.id,
+      action: "test.actor",
+      entityType: "User",
+      entityId: user.id,
+      metadata: { n: 1 },
+    });
+    await prisma.user.delete({ where: { id: user.id } });
+    const sound = await verifyAuditChain();
+    expect(sound.ok).toBe(true);
+    const row = await prisma.auditLog.findFirst({ where: { entityId: user.id, action: "test.actor" } });
+    expect(row?.actorId).toBeNull();
+    expect(row?.actorRef).toBe(user.id);
+  });
+
   it("detects a tampered audit row and accepts the restored row", async () => {
     await writeAudit({ action: "test.chain", entityType: "Test", entityId: `${stamp}-a`, metadata: { n: 1 } });
     await writeAudit({ action: "test.chain", entityType: "Test", entityId: `${stamp}-b`, metadata: { n: 2 } });
@@ -214,7 +238,7 @@ describe("data-subject rights, budget, and audit chain", () => {
     expect(broken.problems.some((problem) => problem.includes("row_hash"))).toBe(true);
     const restoredHash = hashAuditRow({
       seq: row!.seq!,
-      actorId: row!.actorId,
+      actorId: row!.actorRef ?? row!.actorId,
       action: row!.action,
       entityType: row!.entityType,
       entityId: row!.entityId,

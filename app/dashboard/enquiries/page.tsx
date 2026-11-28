@@ -10,7 +10,7 @@ export default async function EnquiriesPage() {
       <div className="mt-6 grid gap-3">
         {enquiries.map((enquiry) => (
           <article key={enquiry.id} className="card p-4">
-            <p className="text-xs uppercase tracking-wide text-[var(--brass)]">{enquiry.kind}</p>
+            <p className="text-xs uppercase tracking-wide text-[var(--brass-ink)]">{enquiry.kind}</p>
             <h2 className="text-2xl">
               {enquiry.name} · {enquiry.email}
             </h2>

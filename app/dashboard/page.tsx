@@ -21,16 +21,16 @@ export default async function DashboardPage() {
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
         {PIPELINE.map((status) => (
           <Link key={status} href="/dashboard/candidates" className="card p-4">
-            <p className="text-sm text-[var(--brass)]">{STATUS_LABELS[status]}</p>
+            <p className="text-sm text-[var(--brass-ink)]">{STATUS_LABELS[status]}</p>
             <p className="display text-3xl">{byStatus[status] ?? 0}</p>
           </Link>
         ))}
         <Link href="/dashboard/enquiries" className="card p-4">
-          <p className="text-sm text-[var(--brass)]">Enquiries</p>
+          <p className="text-sm text-[var(--brass-ink)]">Enquiries</p>
           <p className="display text-3xl">{enquiries}</p>
         </Link>
         <Link href="/dashboard/marketing" className="card p-4">
-          <p className="text-sm text-[var(--brass)]">Drafts awaiting review</p>
+          <p className="text-sm text-[var(--brass-ink)]">Drafts awaiting review</p>
           <p className="display text-3xl">{drafts}</p>
         </Link>
       </div>

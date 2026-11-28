@@ -1,3 +1,4 @@
+import { sessionPolicySummary } from "@/lib/auth/session-policy";
 import { providerDirectory } from "@/lib/ai/client";
 import { JsonForm } from "@/components/json-form";
 import { requireUser } from "@/lib/auth/current";
@@ -14,6 +15,7 @@ export default async function SettingsPage() {
   const profile = await agencyProfile();
   const providers = providerDirectory();
   const retention = retentionMode();
+  const sessions = sessionPolicySummary();
   return (
     <div className="grid gap-6">
       <div>
@@ -38,6 +40,9 @@ export default async function SettingsPage() {
         </p>
         <p>
           Staff assignment gate: {process.env.STAFF_ASSIGNMENT_REQUIRED === "true" ? "on" : "off"}.
+        </p>
+        <p>
+          Sessions last at most {sessions.absoluteHours} hours. Staff idle timeout is {sessions.staffIdleMinutes} minutes. Employer and helper idle timeout is {sessions.portalIdleMinutes} minutes. Revoked sessions are deleted after {sessions.revokedRetentionHours} hours. Expired sessions are deleted on the retention run.
         </p>
         <p>
           MOM minimum helper age {momRules.fdw.minAgeYears}, security bond SGD {momRules.securityBond.amountSgd}.{" "}

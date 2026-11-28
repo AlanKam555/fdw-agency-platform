@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.6.0 — 2026-11-28
+
+### Added
+
+- Idle timeout beside the absolute session lifetime. Staff and admin default to 30 minutes (`SESSION_IDLE_STAFF_MINUTES`, clamped 5–120). Employers and helpers default to 12 hours (`SESSION_IDLE_PORTAL_MINUTES`, clamped 30–1440). `SESSION_ABSOLUTE_HOURS` stays capped at 7 days. An idle session is revoked and audited as `auth.session_idle`.
+- The retention job deletes expired sessions on every run, including a personal-data dry run, and deletes revoked sessions after `SESSION_REVOKED_RETENTION_HOURS` (default 24).
+- Staff service contracts, invoices, and payment records. Amounts are integer cents in SGD. Card numbers are rejected. There is no payment processor. Routes require `billing:manage`.
+- OpenAPI catalogue at `GET /api/staff/openapi` and `/dashboard/api`, refused to anyone who is not staff. A unit test fails when the catalogue drifts from the route files.
+- Locale switch for public chrome, the home page, the helper application title, and the helper portal. Locales are English, Chinese, Malay, Indonesian, Tagalog, Burmese, and Tamil. Tamil is a structure-only catalogue. Missing strings fall back to English. Legal and MOM copy stays in English.
+- Helper portal shows status, the next step, interviews without employer contact details, document review state without file names, and consent. Upload choices follow the kinds the helper is allowed to send.
+- Playwright runs axe on the public pages for WCAG 2.0 and 2.1 A and AA.
+- `docs/deploy.md` and `docs/multi-tenancy.md`. The multi-tenancy note is a design only.
+
+### Changed
+
+- Small text that used the brand accent now uses `--brass-ink` (`#6f3b12`) so it clears WCAG AA on the paper background. The accent token `--brass` is unchanged.
+- The fictional Harbourlight deployment publishes no EmploymentAgency JSON-LD. A configured agency omits placeholder phone, email, address, and licence values. Open Graph no longer says that demonstration data is fictional on every deployment.
+- Focus-visible outlines are 3px.
+- Re-seeding clears reminder opt-ins and delivery rows, so the demo starts with every reminder type off.
+- Audit rows store `actorRef`, an immutable copy of the actor id inside the hash. Deleting an account still clears the `actorId` foreign key and no longer breaks chain verification.
+
 ## 0.5.0 — 2026-11-28
 
 ### Security

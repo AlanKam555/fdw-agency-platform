@@ -16,15 +16,15 @@ export default async function EmployerHome() {
       {employer ? (
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
           <Link className="card p-4" href="/employer/requirements">
-            <p className="text-sm text-[var(--brass)]">Briefs</p>
+            <p className="text-sm text-[var(--brass-ink)]">Briefs</p>
             <p className="display text-3xl">{employer._count.requirements}</p>
           </Link>
           <Link className="card p-4" href="/employer/shortlist">
-            <p className="text-sm text-[var(--brass)]">Shortlist</p>
+            <p className="text-sm text-[var(--brass-ink)]">Shortlist</p>
             <p className="display text-3xl">{employer._count.shortlists}</p>
           </Link>
           <Link className="card p-4" href="/employer/interviews">
-            <p className="text-sm text-[var(--brass)]">Interviews</p>
+            <p className="text-sm text-[var(--brass-ink)]">Interviews</p>
             <p className="display text-3xl">{employer._count.interviews}</p>
           </Link>
         </div>

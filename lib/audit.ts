@@ -84,6 +84,7 @@ export async function writeAudit(entry: {
       const created = await tx.auditLog.create({
         data: {
           actorId,
+          actorRef: actorId,
           action: entry.action,
           entityType: entry.entityType,
           entityId: entry.entityId,

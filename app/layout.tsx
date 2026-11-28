@@ -4,6 +4,8 @@ import { Fraunces, Outfit } from "next/font/google";
 import { Footer, Header } from "@/components/chrome";
 import { brand } from "@/config/brand";
 import { AGENCY } from "@/content/site";
+import { HTML_LANG, t } from "@/lib/i18n";
+import { getLocale } from "@/lib/i18n/request";
 import { brandStyleSheet } from "@/lib/security/brand-style";
 import "./globals.css";
 
@@ -20,8 +22,7 @@ export const metadata: Metadata = {
     `${AGENCY.name} is ${AGENCY.fictionalDemo ? "a fictional demonstration of " : ""}a Singapore employment agency workspace for foreign domestic workers. Browse consented profiles, send an employer brief, and let staff prepare a MOM work permit pack.`,
   openGraph: {
     title: `${AGENCY.name} — household helpers in Singapore`,
-    description:
-      "Matching, interviews, and Ministry of Manpower work permit preparation for foreign domestic workers. Demonstration data is fictional.",
+    description: `${AGENCY.name} introduces foreign domestic workers to families in Singapore. Staff decide every match and prepare the Ministry of Manpower file.`,
     locale: "en_SG",
     type: "website",
   },
@@ -29,16 +30,17 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const locale = await getLocale();
   return (
     <html
-      lang="en-SG"
+      lang={HTML_LANG[locale]}
       nonce={nonce}
       className={`${outfit.variable} ${fraunces.variable} brand-colours`}
     >
       <body>
         <style nonce={nonce} dangerouslySetInnerHTML={{ __html: brandStyleSheet(brand) }} />
         <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:bg-white focus:p-2">
-          Skip to content
+          {t(locale, "skip")}
         </a>
         <Header />
         <main id="main">{children}</main>

@@ -52,7 +52,7 @@ export async function verifyAuditChain(): Promise<{ ok: boolean; checked: number
     if ((row.prevHash ?? "") !== prev) problems.push(`prev_hash mismatch at seq ${row.seq}`);
     const recomputed = hashAuditRow({
       seq: row.seq,
-      actorId: row.actorId,
+      actorId: row.actorRef ?? row.actorId,
       action: row.action,
       entityType: row.entityType,
       entityId: row.entityId,

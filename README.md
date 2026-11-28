@@ -21,7 +21,7 @@ Use Node.js 22 and PostgreSQL 16. Every value in [`.env.example`](.env.example) 
 docker compose up --build
 ```
 
-Open http://localhost:3000. Postgres keeps its data in the `pgdata` volume. The app container runs migrations on startup. Compose starts a private MinIO bucket for documents. The image is a Chainguard MinIO build, because `minio/minio` is no longer anonymously pullable. To load the fictional Harbourlight accounts as well:
+Open http://localhost:3000. Postgres keeps its data in the `pgdata` volume. Compose runs migrations in a separate `migrate` service before the app starts. The app container does not migrate on startup. See [docs/deploy.md](docs/deploy.md). Compose starts a private MinIO bucket for documents. The image is a Chainguard MinIO build, because `minio/minio` is no longer anonymously pullable. To load the fictional Harbourlight accounts as well:
 
 ```bash
 SEED_DEMO=true docker compose up --build

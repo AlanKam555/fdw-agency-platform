@@ -16,6 +16,8 @@ const DEMO_EMAILS = [
 ];
 
 async function clearDemo() {
+  await prisma.reminderDelivery.deleteMany();
+  await prisma.reminderTypeOptIn.deleteMany();
   const users = await prisma.user.findMany({ where: { email: { in: DEMO_EMAILS } } });
   const userIds = users.map((user) => user.id);
   if (userIds.length) {

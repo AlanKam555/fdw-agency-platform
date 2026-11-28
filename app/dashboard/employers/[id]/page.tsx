@@ -33,6 +33,11 @@ export default async function EmployerDetailPage({ params }: { params: Promise<{
       <p className="mt-2 text-sm">
         NRIC {employer.nricEnc ? "is stored encrypted" : "was not provided"}. A reason is stored with the audit row.
       </p>
+      <p className="mt-2 text-sm">
+        <Link className="underline" href={`/dashboard/contracts?employer=${employer.id}`}>
+          Contracts
+        </Link>
+      </p>
       <JsonForm action={`/api/staff/employers/${employer.id}/sensitive`} submitLabel="Reveal NRIC" refresh={false}>
         <input type="hidden" name="field" value="nric" />
         <label className="label">

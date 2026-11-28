@@ -1,3 +1,4 @@
+import { purgeStaleSessions, type SessionPurgeCounts } from "@/lib/auth/session-purge";
 import type { CandidateStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { writeAudit } from "@/lib/audit";
@@ -38,6 +39,7 @@ export type RetentionReport = {
   limited: boolean;
   counts: RetentionCounts;
   processed: RetentionCounts;
+  sessions: SessionPurgeCounts;
   note: string;
 };
 
@@ -224,6 +226,7 @@ export async function runRetention(options?: {
     sessions: sessionCount,
   };
   const processed: RetentionCounts = { ...EMPTY };
+  const sessions = await purgeStaleSessions(now);
 
   if (!enforce) {
     await prisma.embeddingCache.deleteMany({ where: { createdAt: { lt: cacheBefore } } });
@@ -231,7 +234,12 @@ export async function runRetention(options?: {
       action: "privacy.retention_dry_run",
       entityType: "Retention",
       entityId: now.toISOString(),
-      metadata: { ...counts, purgeAudit: false },
+      metadata: {
+        ...counts,
+        purgeAudit: false,
+        sessionsExpired: sessions.expired,
+        sessionsRevoked: sessions.revoked,
+      },
       ip: options?.ip ?? "cron",
     });
     return {
@@ -241,7 +249,8 @@ export async function runRetention(options?: {
       limited: Object.values(counts).some((value) => value > RETENTION_BATCH),
       counts,
       processed,
-      note: "Dry run. Counts are records past the policy windows. Set RETENTION_ENFORCE=true to redact and delete. Object-store retries still run. See docs/retention.md.",
+      sessions,
+      note: "Dry run for personal data. Counts are records past the policy windows. Set RETENTION_ENFORCE=true to redact and delete. Object-store retries still run. Expired sessions, and revoked sessions past the retention window, are deleted on every run. See docs/retention.md.",
     };
   }
 
@@ -262,7 +271,7 @@ export async function runRetention(options?: {
     }
   }
 
-  const [enquiries, candidates, employers, matches, outcomes, interviews, drafts, testimonials, sessions] =
+  const [enquiries, candidates, employers, matches, outcomes, interviews, drafts, testimonials] =
     await Promise.all([
       prisma.enquiry.findMany({
         where: { createdAt: { lt: enquiryBefore } },
@@ -307,11 +316,6 @@ export async function runRetention(options?: {
       }),
       prisma.testimonialRequest.findMany({
         where: { status: "REQUESTED", createdAt: { lt: testimonialBefore } },
-        select: { id: true },
-        take: RETENTION_BATCH,
-      }),
-      prisma.session.findMany({
-        where: { OR: [{ expiresAt: { lt: sessionBefore } }, { revokedAt: { lt: sessionBefore } }] },
         select: { id: true },
         take: RETENTION_BATCH,
       }),
@@ -367,10 +371,6 @@ export async function runRetention(options?: {
     });
     processed.testimonials = deleted.count;
   }
-  if (sessions.length) {
-    const deleted = await prisma.session.deleteMany({ where: { id: { in: sessions.map((row) => row.id) } } });
-    processed.sessions = deleted.count;
-  }
   await prisma.embeddingCache.deleteMany({ where: { createdAt: { lt: cacheBefore } } });
 
   if (purgeAudit) processed.auditLogs = await purgeAuditPrefix(auditBefore, RETENTION_BATCH);
@@ -389,6 +389,8 @@ export async function runRetention(options?: {
       processedEnquiries: processed.enquiries,
       processedAuditLogs: processed.auditLogs,
       purgeAudit,
+      sessionsExpired: sessions.expired,
+      sessionsRevoked: sessions.revoked,
     },
     ip: options?.ip ?? "cron",
   });
@@ -407,6 +409,7 @@ export async function runRetention(options?: {
     limited,
     counts,
     processed,
-    note: "Due helper and household profiles were redacted. Unconfirmed accounts past the window were removed when they had no file beyond an application. Narrative fields past the deployed window were cleared. Match scores and outcome category codes were kept. Audit rows are removed only when purge is also on, and only as a hash-chain prefix. See docs/retention.md.",
+    sessions,
+    note: "Due helper and household profiles were redacted. Unconfirmed accounts past the window were removed when they had no file beyond an application. Narrative fields past the deployed window were cleared. Match scores and outcome category codes were kept. Audit rows are removed only when purge is also on, and only as a hash-chain prefix. Expired sessions, and revoked sessions past the retention window, are deleted on every run. See docs/retention.md.",
   };
 }

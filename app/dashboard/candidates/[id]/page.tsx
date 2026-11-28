@@ -26,9 +26,9 @@ export default async function CandidateDetailPage({
   return (
     <div className="grid gap-6">
       <div>
-        <p className="text-sm text-[var(--brass)]">{STATUS_LABELS[candidate.status]}</p>
+        <p className="text-sm text-[var(--brass-ink)]">{STATUS_LABELS[candidate.status]}</p>
         <h1 className="text-4xl">{candidate.fullName}</h1>
-        {candidate.fictional ? <p className="text-xs uppercase tracking-wide text-[var(--brass)]">Fictional profile</p> : null}
+        {candidate.fictional ? <p className="text-xs uppercase tracking-wide text-[var(--brass-ink)]">Fictional profile</p> : null}
         <p className="mt-2 text-sm">
           {candidate.nationality} · {candidate.experienceYears} years · SGD {candidate.salaryExpectationSgd} ·{" "}
           {candidate.languages.join(", ")}

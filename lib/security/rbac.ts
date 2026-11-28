@@ -25,6 +25,7 @@ export const PERMISSIONS = [
   "rules:review",
   "rules:manage",
   "outcomes:write",
+  "billing:manage",
   "privacy:export",
 ] as const;
 
@@ -54,6 +55,7 @@ const MATRIX: Record<Permission, readonly Role[]> = {
   "rules:review": ["ADMIN", "STAFF"],
   "rules:manage": ["ADMIN"],
   "outcomes:write": ["ADMIN", "STAFF"],
+  "billing:manage": ["ADMIN", "STAFF"],
   "privacy:export": ["ADMIN", "STAFF"],
 };
 

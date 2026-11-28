@@ -148,7 +148,13 @@ export function LogoutButton() {
   );
 }
 
-export function UploadForm({ candidateId }: { candidateId: string }) {
+export function UploadForm({
+  candidateId,
+  kinds = ["PASSPORT", "EDUCATIONAL_CERTIFICATE", "MEDICAL", "PHOTO", "OTHER"],
+}: {
+  candidateId: string;
+  kinds?: string[];
+}) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -173,19 +179,19 @@ export function UploadForm({ candidateId }: { candidateId: string }) {
     <form onSubmit={onSubmit} className="grid gap-3">
       <label className="label">
         Document type
-        <select className="select" name="kind" defaultValue="PASSPORT">
-          <option value="PASSPORT">Passport</option>
-          <option value="EDUCATIONAL_CERTIFICATE">Education certificate</option>
-          <option value="MEDICAL">Medical</option>
-          <option value="PHOTO">Consented photo</option>
-          <option value="OTHER">Other</option>
+        <select className="select" name="kind" defaultValue={kinds[0] ?? "PASSPORT"}>
+          {kinds.includes("PASSPORT") ? <option value="PASSPORT">Passport</option> : null}
+          {kinds.includes("EDUCATIONAL_CERTIFICATE") ? <option value="EDUCATIONAL_CERTIFICATE">Education certificate</option> : null}
+          {kinds.includes("MEDICAL") ? <option value="MEDICAL">Medical</option> : null}
+          {kinds.includes("PHOTO") ? <option value="PHOTO">Consented photo</option> : null}
+          {kinds.includes("OTHER") ? <option value="OTHER">Other</option> : null}
         </select>
       </label>
       <label className="label">
         File
         <input className="field" type="file" name="file" accept="application/pdf,image/jpeg,image/png" required />
       </label>
-      {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
+      {error ? <p role="alert" className="text-sm text-[var(--danger)]">{error}</p> : null}
       <button className="btn secondary" disabled={pending} type="submit">
         {pending ? "Uploading…" : "Upload private file"}
       </button>

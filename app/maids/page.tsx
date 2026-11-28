@@ -30,22 +30,31 @@ export default async function MaidsPage({
       <p className="mt-3 max-w-2xl text-[var(--ink)]/80">
         Only profiles with photo consent and an available status are listed. Age is not shown. Filters cover skills, language, and salary.
       </p>
-      <form className="mt-6 flex flex-wrap gap-3" method="get">
-        <select className="select w-auto" name="skill" defaultValue={query.skill ?? ""}>
-          <option value="">Any skill</option>
-          {Object.entries(SKILL_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <select className="select w-auto" name="language" defaultValue={query.language ?? ""}>
-          <option value="">Any language</option>
-          {LANGUAGES.map((language) => (
-            <option key={language}>{language}</option>
-          ))}
-        </select>
-        <input className="field w-36" name="maxSalary" type="number" min={0} placeholder="Max salary" defaultValue={query.maxSalary ?? ""} />
+      <form className="mt-6 flex flex-wrap items-end gap-3" method="get">
+        <label className="label">
+          Skill
+          <select className="select w-auto" name="skill" defaultValue={query.skill ?? ""}>
+            <option value="">Any skill</option>
+            {Object.entries(SKILL_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="label">
+          Language
+          <select className="select w-auto" name="language" defaultValue={query.language ?? ""}>
+            <option value="">Any language</option>
+            {LANGUAGES.map((language) => (
+              <option key={language}>{language}</option>
+            ))}
+          </select>
+        </label>
+        <label className="label">
+          Maximum salary (SGD)
+          <input className="field w-36" name="maxSalary" type="number" min={0} defaultValue={query.maxSalary ?? ""} />
+        </label>
         <button className="btn" type="submit">
           Filter
         </button>
@@ -74,7 +83,7 @@ export default async function MaidsPage({
                   </span>
                 ))}
               </div>
-              {helper.fictional ? <p className="mt-3 text-xs uppercase tracking-wide text-[var(--brass)]">Fictional profile</p> : null}
+              {helper.fictional ? <p className="mt-3 text-xs uppercase tracking-wide text-[var(--brass-ink)]">Fictional profile</p> : null}
             </div>
           </Link>
         ))}

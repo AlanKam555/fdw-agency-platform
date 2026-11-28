@@ -1,9 +1,10 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { SESSION_ABSOLUTE_MAX_SECONDS, sessionAbsoluteSeconds } from "@/lib/auth/session-policy";
 import { derivedKey } from "@/lib/crypto/hkdf";
 import type { Role } from "@/lib/security/rbac";
 
 export const SESSION_COOKIE = "hl_session";
-export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
+export const SESSION_MAX_AGE_SECONDS = SESSION_ABSOLUTE_MAX_SECONDS;
 
 export type SessionPayload = {
   sub: string;
@@ -25,12 +26,15 @@ export function createSessionToken(input: {
   csrf?: string;
   sid: string;
   now?: number;
+  lifetimeSeconds?: number;
 }): string {
+  const requested = input.lifetimeSeconds ?? sessionAbsoluteSeconds();
+  const lifetime = Math.min(Math.max(requested, 60), SESSION_ABSOLUTE_MAX_SECONDS);
   const payload: SessionPayload = {
     sub: input.sub,
     role: input.role,
     name: input.name,
-    exp: Math.floor((input.now ?? Date.now()) / 1000) + SESSION_MAX_AGE_SECONDS,
+    exp: Math.floor((input.now ?? Date.now()) / 1000) + lifetime,
     csrf: input.csrf ?? randomBytes(32).toString("base64url"),
     sid: input.sid,
   };
@@ -74,7 +78,7 @@ export function sessionCookieOptions() {
     sameSite: "lax" as const,
     secure: cookiesAreSecure(),
     path: "/",
-    maxAge: SESSION_MAX_AGE_SECONDS,
+    maxAge: sessionAbsoluteSeconds(),
   };
 }
 

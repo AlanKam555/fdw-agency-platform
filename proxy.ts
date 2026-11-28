@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { clearSessionCookieOptions, csrfCookieOptions, SESSION_COOKIE } from "@/lib/auth/session";
 import { resolveRequestSession } from "@/lib/auth/sessions";
+import { clientIp } from "@/lib/security/client-ip";
 import { contentSecurityPolicy } from "@/lib/security/csp";
 import { hstsValue } from "@/lib/security/hsts";
 import { CSRF_COOKIE } from "@/lib/security/csrf";
@@ -24,21 +25,24 @@ export async function proxy(request: NextRequest) {
   const existing = request.cookies.get(CSRF_COOKIE)?.value;
   const token = existing ?? randomBytes(32).toString("base64url");
   const nonce = randomBytes(16).toString("base64url");
+  const path = request.nextUrl.pathname;
   const csp = contentSecurityPolicy(nonce);
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-hl-csrf", token);
   requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("x-pathname", path);
   requestHeaders.set("Content-Security-Policy", csp);
   const csrf = { token, existing: Boolean(existing) };
 
-  const path = request.nextUrl.pathname;
   const cookie = request.cookies.get(SESSION_COOKIE)?.value;
   let role: Role | null = null;
   let disabled = false;
+  let stale = false;
   if (cookie) {
     try {
-      const resolved = await resolveRequestSession(cookie);
+      const resolved = await resolveRequestSession(cookie, { ip: clientIp(request.headers) });
       if (resolved.kind === "disabled") disabled = true;
+      if (resolved.kind === "stale") stale = true;
       if (resolved.kind === "active") role = resolved.user.role;
     } catch {
       logEvent("error", "auth.session_lookup_failed", {});
@@ -85,7 +89,7 @@ export async function proxy(request: NextRequest) {
     response = NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  if (disabled) {
+  if (disabled || stale) {
     response.cookies.set(SESSION_COOKIE, "", clearSessionCookieOptions());
   }
   return applyCsp(response, csp, csrf);

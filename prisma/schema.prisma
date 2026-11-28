@@ -116,6 +116,7 @@ model User {
   totpEnabledAt       DateTime?
   totpLastStep        Int?
   totpSetupDueAt      DateTime?
+  emailVerifiedAt     DateTime?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   employer            Employer?
@@ -129,6 +130,21 @@ model User {
   weightEdits         MatchWeightProfile[]
   sessions            Session[]
   recoveryCodes       RecoveryCode[]
+  emailVerifications  EmailVerification[]
+  approvedDocuments   Document[] @relation("documentApprover")
+  rejectedDocuments   Document[] @relation("documentRejector")
+}
+
+model EmailVerification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model Session {
@@ -376,10 +392,19 @@ model Document {
   byteSize     Int
   storageKey   String
   sha256       String
-  uploadedById String?
-  createdAt    DateTime     @default(now())
+  uploadedById    String?
+  createdAt       DateTime     @default(now())
+  reviewedAt      DateTime?
+  approvedById    String?
+  approvedBy      User?        @relation("documentApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  rejectedAt      DateTime?
+  rejectedById    String?
+  rejectedBy      User?        @relation("documentRejector", fields: [rejectedById], references: [id], onDelete: SetNull)
+  rejectionReason String?
 
   @@index([candidateId])
+  @@index([candidateId, kind])
+  @@index([kind, reviewedAt])
 }
 
 model MarketingDraft {

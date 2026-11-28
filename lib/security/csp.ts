@@ -1,3 +1,22 @@
+function botHosts(): { script: string; frame: string; connect: string } | null {
+  const mode = process.env.BOT_PROTECTION?.trim().toLowerCase();
+  if (mode === "turnstile") {
+    return {
+      script: "https://challenges.cloudflare.com",
+      frame: "https://challenges.cloudflare.com",
+      connect: "https://challenges.cloudflare.com",
+    };
+  }
+  if (mode === "hcaptcha") {
+    return {
+      script: "https://js.hcaptcha.com",
+      frame: "https://hcaptcha.com https://*.hcaptcha.com",
+      connect: "https://hcaptcha.com",
+    };
+  }
+  return null;
+}
+
 const SCRIPT = (nonce: string, dev: boolean) =>
   dev
     ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval'`
@@ -19,6 +38,7 @@ export function contentSecurityPolicy(
   if (!/^[A-Za-z0-9_-]+$/.test(nonce)) {
     throw new Error("CSP nonce must be base64url.");
   }
+  const bot = botHosts();
   const directives = [
     "default-src 'self'",
     "base-uri 'self'",
@@ -30,9 +50,10 @@ export function contentSecurityPolicy(
     `style-src 'self' 'nonce-${nonce}'`,
     `style-src-elem 'self' 'nonce-${nonce}'`,
     "style-src-attr 'none'",
-    SCRIPT(nonce, dev),
-    dev ? "connect-src 'self' ws: wss:" : "connect-src 'self'",
+    bot ? `${SCRIPT(nonce, dev)} ${bot.script}` : SCRIPT(nonce, dev),
+    `${dev ? "connect-src 'self' ws: wss:" : "connect-src 'self'"}${bot ? ` ${bot.connect}` : ""}`,
   ];
+  if (bot) directives.push(`frame-src 'self' ${bot.frame}`);
   if (!dev && process.env.APP_URL?.startsWith("https://")) {
     directives.push("upgrade-insecure-requests");
   }

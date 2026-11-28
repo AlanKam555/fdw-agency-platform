@@ -9,6 +9,7 @@ The windows live in `lib/privacy/policy.ts` and are repeated in the public priva
 | Other applications that are not deployed | 2 years | `updatedAt` |
 | Deployed placements | 5 years | `updatedAt` |
 | Audit log | 2 years | `createdAt` |
+| Unconfirmed employer or helper accounts | 14 days | `createdAt` |
 
 A redacted profile is skipped. "Due" means the clock is older than the window.
 
@@ -21,7 +22,7 @@ curl -sS -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/
 The response is counts and a note. It does not include names, emails, or document numbers.
 
 - `RETENTION_ENFORCE` unset or `false`: dry run. Nothing is deleted.
-- `RETENTION_ENFORCE=true`: each due helper profile is redacted with the same routine as the staff button (documents removed, passport, FIN, and medical fields cleared, linked account disabled). Due enquiries are deleted.
+- `RETENTION_ENFORCE=true`: each due helper profile is redacted with the same routine as the staff button (documents removed, passport, FIN, and medical fields cleared, linked account disabled). Due enquiries are deleted. Employer and helper accounts with no confirmed email, older than 14 days, are deleted when they have no placement past `APPLIED`. A row that cannot be deleted is skipped and counted in the log as `privacy.retention_unverified_skipped`, without the address.
 - `RETENTION_PURGE_AUDIT=true` together with enforce: audit rows older than the audit window are deleted. Leave this off until you have exported the log. The job writes its own audit row after the purge selection, so that new row stays.
 
 Each category is capped at 50 rows per call. When `limited` is true, run the job again until the counts drop. `vercel.json` schedules this daily at 01:30 UTC, next to the reminder list at 01:00 UTC. Both routes reject a missing or wrong `CRON_SECRET`.

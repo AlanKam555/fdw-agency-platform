@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { CaptchaField } from "@/components/captcha-field";
+import { Honeypot } from "@/components/honeypot";
 import { JsonForm } from "@/components/json-form";
 
 export const metadata: Metadata = { title: "Contact" };
@@ -19,6 +21,8 @@ export default async function ContactPage({
       <p className="mt-3 text-[var(--ink)]/80">We use this only to reply to your question.</p>
       <div className="card mt-6 p-6">
         <JsonForm action="/api/contact" submitLabel="Send message" refresh={false} success="Message received. Staff will see it in the enquiry list.">
+          <Honeypot />
+          <CaptchaField />
           <label className="label">
             Name
             <input className="field" name="name" required minLength={2} />

@@ -9,8 +9,9 @@ describe("retention job", () => {
   afterAll(async () => {
     await prisma.auditLog.deleteMany({ where: { entityId: stamp } });
     await prisma.enquiry.deleteMany({ where: { email } });
-    await prisma.candidate.deleteMany({ where: { email } });
-    await prisma.user.deleteMany({ where: { email } });
+    const addresses = [email, `unverified-${stamp}@harbourlight.example`];
+    await prisma.candidate.deleteMany({ where: { email: { in: addresses } } });
+    await prisma.user.deleteMany({ where: { email: { in: addresses } } });
     await prisma.$disconnect();
   });
 
@@ -63,7 +64,7 @@ describe("retention job", () => {
     expect(dry.counts.enquiries).toBeGreaterThanOrEqual(1);
     expect(dry.counts.candidates).toBeGreaterThanOrEqual(1);
     expect(dry.counts.auditLogs).toBeGreaterThanOrEqual(1);
-    expect(dry.processed).toEqual({ enquiries: 0, candidates: 0, auditLogs: 0 });
+    expect(dry.processed).toEqual({ enquiries: 0, candidates: 0, auditLogs: 0, unverifiedAccounts: 0 });
     expect(JSON.stringify(dry)).not.toContain(email);
 
     const enforced = await runRetention({
@@ -89,5 +90,44 @@ describe("retention job", () => {
     });
     expect(purged.processed.auditLogs).toBeGreaterThanOrEqual(1);
     expect(await prisma.auditLog.count({ where: { entityId: stamp } })).toBe(0);
+  });
+
+  it("deletes an old unconfirmed employer or helper account", async () => {
+    const address = `unverified-${stamp}@harbourlight.example`;
+    const user = await prisma.user.create({
+      data: {
+        email: address,
+        name: "Unconfirmed",
+        role: "CANDIDATE",
+        passwordHash: "not-used",
+        emailVerifiedAt: null,
+        createdAt: new Date("2020-01-01"),
+      },
+    });
+    const candidate = await prisma.candidate.create({
+      data: {
+        userId: user.id,
+        fullName: "Unconfirmed",
+        email: address,
+        nationality: "Philippines",
+        dateOfBirth: new Date("1992-01-01"),
+        sex: "FEMALE",
+        educationYears: 10,
+        experienceYears: 1,
+        salaryExpectationSgd: 600,
+        availableFrom: new Date("2026-12-01"),
+        status: "APPLIED",
+        fictional: true,
+      },
+    });
+    const report = await runRetention({
+      now: new Date("2026-11-26T00:00:00.000Z"),
+      enforce: true,
+      ip: "test",
+    });
+    expect(report.processed.unverifiedAccounts).toBeGreaterThanOrEqual(1);
+    expect(await prisma.user.findUnique({ where: { id: user.id } })).toBeNull();
+    expect(await prisma.candidate.findUnique({ where: { id: candidate.id } })).toBeNull();
+    expect(JSON.stringify(report)).not.toContain(address);
   });
 });

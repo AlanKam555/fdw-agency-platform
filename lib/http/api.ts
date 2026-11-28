@@ -5,7 +5,8 @@ import { CSRF_COOKIE, csrfIsValid, originAllowed, appOrigin } from "@/lib/securi
 import { clientIp, consumeRateLimit } from "@/lib/security/rate-limit";
 import { hasPermission, type Permission, type Role } from "@/lib/security/rbac";
 import { mfaSetupBlocks } from "@/lib/security/totp";
-import { z, type ZodError, type ZodTypeAny } from "zod";
+import { type ZodError, type ZodType } from "zod";
+import { stripBotFields } from "@/lib/security/bot-protection";
 
 export function json(body: unknown, status = 200, headers?: Record<string, string>) {
   return NextResponse.json(body, { status, headers });
@@ -145,8 +146,8 @@ function rejectSession() {
   return response;
 }
 
-export function parseBody<S extends ZodTypeAny>(schema: S, payload: Record<string, unknown>) {
-  const rest = { ...payload };
+export function parseBody<S extends ZodType>(schema: S, payload: Record<string, unknown>) {
+  const rest = stripBotFields(payload);
   delete rest.csrf;
-  return schema.safeParse(rest) as z.SafeParseReturnType<z.input<S>, z.output<S>>;
+  return schema.safeParse(rest);
 }

@@ -1,4 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { derivedKey } from "@/lib/crypto/hkdf";
 import type { Role } from "@/lib/security/rbac";
 
 export const SESSION_COOKIE = "hl_session";
@@ -13,16 +14,8 @@ export type SessionPayload = {
   sid: string;
 };
 
-function secret(): string {
-  const value = process.env.AUTH_SECRET;
-  if (!value || value.length < 16) {
-    throw new Error("AUTH_SECRET must be set to a string of at least 16 characters");
-  }
-  return value;
-}
-
 function sign(body: string): string {
-  return createHmac("sha256", secret()).update(body).digest("base64url");
+  return createHmac("sha256", derivedKey("session")).update(body).digest("base64url");
 }
 
 export function createSessionToken(input: {

@@ -78,6 +78,12 @@ export const staffActionSchema = z.discriminatedUnion("action", [
     password: passwordSchema,
   }),
   z.object({ action: z.literal("revoke_session"), sessionId: z.string().min(1).max(40) }),
+  z.object({
+    action: z.literal("reset_totp"),
+    userId: z.string().min(1).max(40),
+    password: z.string().min(1).max(200),
+    code: z.string().regex(/^\d{6}$/),
+  }),
 ]);
 
 export const registerSchema = z.object({
@@ -135,6 +141,22 @@ export const candidateApplicationSchema = z
     internalNotes: z.string().trim().max(2000).optional(),
   })
   .strict();
+
+export const publicCandidateApplicationSchema = candidateApplicationSchema
+  .omit({ internalNotes: true, medicalFitStatus: true })
+  .strict();
+
+export const documentReviewSchema = z
+  .object({
+    decision: z.enum(["approve", "reject"]),
+    reason: z.string().trim().max(500).optional().or(z.literal("")),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.decision === "reject" && (value.reason ?? "").trim().length < 3) {
+      ctx.addIssue({ code: "custom", path: ["reason"], message: "Give a short reason." });
+    }
+  });
 
 export const employerRequirementSchema = z
   .object({

@@ -33,6 +33,7 @@ yarn-error.log*
 /storage
 /tmp
 /test-private
+/private
 .playwright-mcp
 /playwright-report
 /test-results

@@ -63,16 +63,16 @@ async function main() {
   const now = new Date();
 
   const admin = await prisma.user.create({
-    data: { email: "admin@harbourlight.example", name: "Amina Rahim", role: "ADMIN", passwordHash },
+    data: { email: "admin@harbourlight.example", name: "Amina Rahim", role: "ADMIN", passwordHash, emailVerifiedAt: now },
   });
   const staff = await prisma.user.create({
-    data: { email: "staff@harbourlight.example", name: "Jun Wei Lim", role: "STAFF", passwordHash },
+    data: { email: "staff@harbourlight.example", name: "Jun Wei Lim", role: "STAFF", passwordHash, emailVerifiedAt: now },
   });
   const employerUser = await prisma.user.create({
-    data: { email: "employer@harbourlight.example", name: "Priya Menon", role: "EMPLOYER", passwordHash },
+    data: { email: "employer@harbourlight.example", name: "Priya Menon", role: "EMPLOYER", passwordHash, emailVerifiedAt: now },
   });
   const candidateUser = await prisma.user.create({
-    data: { email: "candidate@harbourlight.example", name: "Rosa Dela Cruz", role: "CANDIDATE", passwordHash },
+    data: { email: "candidate@harbourlight.example", name: "Rosa Dela Cruz", role: "CANDIDATE", passwordHash, emailVerifiedAt: now },
   });
 
   const helpers: Array<{

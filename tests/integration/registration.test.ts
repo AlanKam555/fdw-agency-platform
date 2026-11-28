@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { POST as register } from "@/app/api/auth/register/route";
 import { authenticate } from "@/lib/services/accounts";
+import { confirmEmailVerification, verificationOutbox } from "@/lib/security/email-verification";
 import { resetRateLimits } from "@/lib/security/rate-limit";
 import { REGISTRATION_NOTE } from "@/lib/security/registration";
 
@@ -52,6 +53,14 @@ describe("public registration", () => {
     const user = await prisma.user.findUnique({ where: { email } });
     expect(user?.role).toBe("EMPLOYER");
     expect(user?.name).toBe("Registration Test");
+    expect(user?.emailVerifiedAt).toBeNull();
+    expect(await authenticate(email, "Harbourlight-Dev-1", "127.0.0.1")).toBeNull();
+    const item = [...verificationOutbox()].reverse().find((row) => row.to === email);
+    expect(item?.url).toBeTruthy();
+    const token = new URL(item!.url).searchParams.get("token");
+    expect(token).toBeTruthy();
+    expect(await confirmEmailVerification(token!)).toBe(true);
+    expect(await confirmEmailVerification(token!)).toBe(false);
     expect(await authenticate(email, "Harbourlight-Dev-1", "127.0.0.1")).not.toBeNull();
     expect(await authenticate(email, "Different-Pass-2", "127.0.0.1")).toBeNull();
   });

@@ -1,71 +1,100 @@
-import {
-  createCipheriv,
-  createDecipheriv,
-  randomBytes,
-  timingSafeEqual,
-} from "node:crypto";
+import { createCipheriv, createDecipheriv, randomBytes, timingSafeEqual } from "node:crypto";
+import { loadKeyring, totpEncryptionKey } from "@/lib/crypto/keyring";
 
-const VERSION = "v1";
+const LEGACY = "v1";
 
-function decodeKey(raw = process.env.FIELD_ENCRYPTION_KEY): Buffer {
-  if (!raw) {
-    throw new Error("FIELD_ENCRYPTION_KEY is not set");
-  }
-  const key = Buffer.from(raw, "base64");
-  if (key.length !== 32) {
-    throw new Error("FIELD_ENCRYPTION_KEY must be 32 bytes, base64-encoded");
-  }
-  return key;
-}
-
-export function encryptString(plaintext: string, key = decodeKey()): string {
-  const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", key, iv);
-  const ciphertext = Buffer.concat([
-    cipher.update(plaintext, "utf8"),
-    cipher.final(),
-  ]);
-  const tag = cipher.getAuthTag();
-  return [
-    VERSION,
-    iv.toString("base64url"),
-    tag.toString("base64url"),
-    ciphertext.toString("base64url"),
-  ].join(":");
-}
-
-export function decryptString(payload: string, key = decodeKey()): string {
-  const parts = payload.split(":");
-  if (parts.length !== 4 || parts[0] !== VERSION) {
-    throw new Error("Unrecognised ciphertext");
-  }
-  const iv = Buffer.from(parts[1], "base64url");
-  const tag = Buffer.from(parts[2], "base64url");
-  const ciphertext = Buffer.from(parts[3], "base64url");
-  const decipher = createDecipheriv("aes-256-gcm", key, iv);
+function openString(ivB64: string, tagB64: string, ctB64: string, key: Buffer): string {
+  const iv = Buffer.from(ivB64, "base64url");
+  const tag = Buffer.from(tagB64, "base64url");
+  const ciphertext = Buffer.from(ctB64, "base64url");
+  if (tag.length !== 16) throw new Error("Unrecognised ciphertext");
+  const decipher = createDecipheriv("aes-256-gcm", key, iv, { authTagLength: 16 });
   decipher.setAuthTag(tag);
-  const plain = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
-  return plain.toString("utf8");
+  return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
 }
 
-export function encryptBytes(data: Buffer, key = decodeKey()): Buffer {
+function seal(plaintext: string, key: Buffer): { iv: string; tag: string; ct: string } {
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", key, iv);
-  const ciphertext = Buffer.concat([cipher.update(data), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  return Buffer.concat([Buffer.from([1]), iv, tag, ciphertext]);
+  const ciphertext = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  return {
+    iv: iv.toString("base64url"),
+    tag: cipher.getAuthTag().toString("base64url"),
+    ct: ciphertext.toString("base64url"),
+  };
 }
 
-export function decryptBytes(payload: Buffer, key = decodeKey()): Buffer {
-  if (payload.length < 1 + 12 + 16 || payload[0] !== 1) {
-    throw new Error("Unrecognised binary ciphertext");
+function keyForId(id: string, override?: Buffer): Buffer {
+  if (override) return override;
+  if (id === "totp") return totpEncryptionKey();
+  const ring = loadKeyring();
+  const found = ring.keys.get(id);
+  if (!found) throw new Error("Unknown field encryption key");
+  return found;
+}
+
+export function encryptString(plaintext: string, key?: Buffer): string {
+  const ring = key ? null : loadKeyring();
+  const keyId = key ? "totp" : ring!.activeId;
+  const material = key ?? ring!.keys.get(keyId)!;
+  const sealed = seal(plaintext, material);
+  return ["v2", keyId, sealed.iv, sealed.tag, sealed.ct].join(":");
+}
+
+export function decryptString(payload: string, key?: Buffer): string {
+  const parts = payload.split(":");
+  if (parts.length === 4 && parts[0] === LEGACY) {
+    return openString(parts[1], parts[2], parts[3], keyForId("v1", key));
   }
-  const iv = payload.subarray(1, 13);
-  const tag = payload.subarray(13, 29);
-  const ciphertext = payload.subarray(29);
-  const decipher = createDecipheriv("aes-256-gcm", key, iv);
+  if (parts.length === 5 && parts[0] === "v2") {
+    return openString(parts[2], parts[3], parts[4], keyForId(parts[1], key));
+  }
+  throw new Error("Unrecognised ciphertext");
+}
+
+export function reencryptField(payload: string): { value: string; changed: boolean } {
+  const activeId = loadKeyring().activeId;
+  if (payload.startsWith(`v2:${activeId}:`)) return { value: payload, changed: false };
+  return { value: encryptString(decryptString(payload)), changed: true };
+}
+
+export function reencryptTotp(payload: string): { value: string; changed: boolean } {
+  if (payload.startsWith("v2:totp:")) return { value: payload, changed: false };
+  const key = totpEncryptionKey();
+  return { value: encryptString(decryptString(payload, key), key), changed: true };
+}
+
+function openBytes(payload: Buffer, offset: number, key: Buffer): Buffer {
+  if (payload.length < offset + 12 + 16) throw new Error("Unrecognised binary ciphertext");
+  const iv = payload.subarray(offset, offset + 12);
+  const tag = payload.subarray(offset + 12, offset + 28);
+  if (tag.length !== 16) throw new Error("Unrecognised binary ciphertext");
+  const ciphertext = payload.subarray(offset + 28);
+  const decipher = createDecipheriv("aes-256-gcm", key, iv, { authTagLength: 16 });
   decipher.setAuthTag(tag);
   return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+}
+
+export function encryptBytes(data: Buffer, key?: Buffer): Buffer {
+  const ring = key ? null : loadKeyring();
+  const keyIdText = key ? "totp" : ring!.activeId;
+  const material = key ?? ring!.keys.get(keyIdText)!;
+  const keyId = Buffer.from(keyIdText, "utf8");
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", material, iv);
+  const ciphertext = Buffer.concat([cipher.update(data), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([Buffer.from([2, keyId.length]), keyId, iv, tag, ciphertext]);
+}
+
+export function decryptBytes(payload: Buffer, key?: Buffer): Buffer {
+  if (payload.length < 1 + 12 + 16) throw new Error("Unrecognised binary ciphertext");
+  if (payload[0] === 1) return openBytes(payload, 1, keyForId("v1", key));
+  if (payload[0] !== 2) throw new Error("Unrecognised binary ciphertext");
+  const idLen = payload[1];
+  if (idLen < 1 || payload.length < 2 + idLen + 12 + 16) throw new Error("Unrecognised binary ciphertext");
+  const keyId = payload.subarray(2, 2 + idLen).toString("utf8");
+  return openBytes(payload, 2 + idLen, keyForId(keyId, key));
 }
 
 export function lastFour(value: string): string {

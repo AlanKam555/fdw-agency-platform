@@ -7,6 +7,7 @@ import {
   saveStoredObject,
   validateUpload,
 } from "@/lib/storage/files";
+import { MAX_DOCUMENTS_PER_CANDIDATE, MAX_DOCUMENTS_PER_KIND, uploadBodyRejection } from "@/lib/storage/uploads";
 import type { DocumentKind } from "@prisma/client";
 
 const KINDS: DocumentKind[] = [
@@ -19,6 +20,8 @@ const KINDS: DocumentKind[] = [
 ];
 
 export async function POST(req: NextRequest) {
+  const rejected = uploadBodyRejection(req.headers.get("content-length"));
+  if (rejected) return json({ error: rejected.error }, rejected.status);
   const form = await req.formData();
   const payload = { csrf: String(form.get("csrf") ?? "") };
   const guard = await guardRequest(req, payload, {
@@ -47,6 +50,15 @@ export async function POST(req: NextRequest) {
   if (!staff && !own) return json({ error: "Forbidden." }, 403);
   if (kind === "PHOTO" && candidate && !candidate.photoConsent) {
     return json({ error: "Photo consent is required before a portrait can be stored." }, 400);
+  }
+  if (candidate) {
+    const [total, ofKind] = await Promise.all([
+      prisma.document.count({ where: { candidateId: candidate.id } }),
+      prisma.document.count({ where: { candidateId: candidate.id, kind: kind as DocumentKind } }),
+    ]);
+    if (total >= MAX_DOCUMENTS_PER_CANDIDATE || ofKind >= MAX_DOCUMENTS_PER_KIND) {
+      return json({ error: "Upload limit reached." }, 409);
+    }
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());

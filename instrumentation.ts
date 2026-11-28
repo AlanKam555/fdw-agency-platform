@@ -3,5 +3,7 @@ export async function register() {
   if (process.env.NEXT_PHASE === "phase-production-build") return;
   if (process.env.npm_lifecycle_event === "build") return;
   const { assertStorageReady } = await import("./lib/storage/files");
+  const { assertProductionSecrets } = await import("./lib/security/secrets");
+  assertProductionSecrets();
   assertStorageReady();
 }

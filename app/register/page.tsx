@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { CaptchaField } from "@/components/captcha-field";
+import { Honeypot } from "@/components/honeypot";
 import { JsonForm } from "@/components/json-form";
 
 export const metadata: Metadata = { title: "Create an account" };
@@ -9,10 +11,12 @@ export default function RegisterPage() {
       <h1 className="text-5xl">Create an account</h1>
       <p className="mt-3 text-sm text-[var(--ink)]/80">
         Staff accounts are created by an administrator. This form is for employers and helpers.
-        The response is the same whether or not the email is already registered. Sign in afterwards.
+        The response is the same whether or not the email is new. Confirm the email before signing in.
       </p>
       <div className="card mt-6 p-6">
-        <JsonForm action="/api/auth/register" submitLabel="Create account" refresh={false} success="Check the message below, then sign in.">
+        <JsonForm action="/api/auth/register" submitLabel="Create account" refresh={false} success="Check the message below, then confirm the email.">
+          <Honeypot />
+          <CaptchaField />
           <label className="label">
             I am
             <select className="select" name="role" defaultValue="EMPLOYER">

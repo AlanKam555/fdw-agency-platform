@@ -192,8 +192,9 @@ describe("cron authorization", () => {
     const previous = process.env.CRON_SECRET;
     delete process.env.CRON_SECRET;
     expect(cronAuthorized("Bearer anything")).toBe(false);
-    process.env.CRON_SECRET = "cron-test-secret-not-real";
-    expect(cronAuthorized("Bearer cron-test-secret-not-real")).toBe(true);
+    process.env.CRON_SECRET = "cron-test-secret-not-real-32-bytes-min";
+    expect(cronAuthorized("Bearer cron-test-secret-not-real-32-bytes-min")).toBe(true);
+    expect(cronAuthorized("Bearer cron-test-secret-not-real")).toBe(false);
     expect(cronAuthorized("Bearer cron-test-secret-not-reaX")).toBe(false);
     expect(cronAuthorized("Bearer short")).toBe(false);
     expect(cronAuthorized(null)).toBe(false);

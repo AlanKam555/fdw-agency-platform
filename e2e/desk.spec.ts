@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { generateSync } from "otplib";
 
@@ -23,6 +24,19 @@ async function submitAndSettle(scope: Page | Locator, name: string) {
 
 function currentCode(secret: string) {
   return generateSync({ secret: secret.trim(), period: 30, epoch: Math.floor(Date.now() / 1000) });
+}
+
+async function confirmEmail(page: Page, email: string) {
+  const raw = await readFile("private/dev-outbox.jsonl", "utf8");
+  const match = raw
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line) as { to?: string; url?: string })
+    .reverse()
+    .find((item) => item.to === email && item.url);
+  expect(match?.url).toBeTruthy();
+  await page.goto(match!.url!);
+  await page.waitForURL(/\/login/);
 }
 
 async function signIn(page: Page, email: string, password: string) {
@@ -62,6 +76,7 @@ test("public site, hiring desk, reminders, rules, and outcomes", async ({ page, 
   await page.getByRole("checkbox", { name: /privacy notice for creating/i }).check();
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByText("If this email is available, the account is ready.")).toBeVisible();
+  await confirmEmail(page, `employer-${stamp}@example.com`);
 
   await signIn(page, `employer-${stamp}@example.com`, "Employer-Test-19");
   await page.waitForURL(/\/employer/);
@@ -97,6 +112,9 @@ test("public site, hiring desk, reminders, rules, and outcomes", async ({ page, 
 
   await signIn(page, "staff@harbourlight.example", "Harbourlight-Dev-1");
   await page.waitForURL(/\/account\/security/);
+  await page.goto("/dashboard/photos");
+  await expect(page.getByRole("heading", { name: "Photo review" })).toBeVisible();
+  await page.goto("/account/security");
   await page.getByRole("button", { name: "Start setup" }).click();
   const secret = (await page.getByTestId("totp-secret").innerText()).trim();
   const used = currentCode(secret);

@@ -1,4 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { derivedKey } from "@/lib/crypto/hkdf";
 import { logEvent } from "@/lib/log";
 
 export type OutboundEmail = {
@@ -155,27 +156,32 @@ export async function createEmailDriver(env: NodeJS.ProcessEnv = process.env): P
   return createConsoleDriver();
 }
 
-function unsubscribeSecret(): string {
-  const value = process.env.EMAIL_UNSUBSCRIBE_SECRET || process.env.AUTH_SECRET;
-  if (!value || value.length < 16) {
-    throw new EmailConfigError("AUTH_SECRET must be set before signing an unsubscribe link.");
-  }
-  return value;
+function unsubscribeKeys(secret?: string): string[] {
+  if (secret) return [secret];
+  const keys = [derivedKey("unsubscribe").toString("base64url")];
+  if (process.env.EMAIL_UNSUBSCRIBE_SECRET) keys.push(process.env.EMAIL_UNSUBSCRIBE_SECRET);
+  if (process.env.AUTH_SECRET) keys.push(process.env.AUTH_SECRET);
+  if (process.env.AUTH_SECRET_PREVIOUS) keys.push(process.env.AUTH_SECRET_PREVIOUS);
+  return keys;
 }
 
-export function signUnsubscribeToken(email: string, expiresAtSeconds: number, secret = unsubscribeSecret()): string {
+export function signUnsubscribeToken(email: string, expiresAtSeconds: number, secret?: string): string {
+  const key = secret ?? derivedKey("unsubscribe").toString("base64url");
   const payload = Buffer.from(JSON.stringify({ e: email.trim().toLowerCase(), exp: expiresAtSeconds })).toString("base64url");
-  const mac = createHmac("sha256", secret).update(payload).digest("base64url");
+  const mac = createHmac("sha256", key).update(payload).digest("base64url");
   return `${payload}.${mac}`;
 }
 
-export function readUnsubscribeToken(token: string, nowSeconds = Math.floor(Date.now() / 1000), secret = unsubscribeSecret()): string | null {
+export function readUnsubscribeToken(token: string, nowSeconds = Math.floor(Date.now() / 1000), secret?: string): string | null {
   const [payload, mac] = token.split(".");
   if (!payload || !mac) return null;
-  const expected = createHmac("sha256", secret).update(payload).digest("base64url");
-  const left = Buffer.from(mac);
-  const right = Buffer.from(expected);
-  if (left.length !== right.length || !timingSafeEqual(left, right)) return null;
+  const matched = unsubscribeKeys(secret).some((key) => {
+    const expected = createHmac("sha256", key).update(payload).digest("base64url");
+    const left = Buffer.from(mac);
+    const right = Buffer.from(expected);
+    return left.length === right.length && timingSafeEqual(left, right);
+  });
+  if (!matched) return null;
   try {
     const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { e?: unknown; exp?: unknown };
     if (typeof parsed.e !== "string" || !parsed.e.includes("@")) return null;

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { writeAudit } from "@/lib/audit";
 import { hashPassword, verifyPassword } from "@/lib/security/passwords";
+import { issueEmailVerification } from "@/lib/security/email-verification";
 import type { Role } from "@/lib/security/rbac";
 import { PDPA_VERSION } from "@/lib/validation/schemas";
 
@@ -15,7 +16,8 @@ export async function authenticate(email: string, password: string, ip: string) 
   const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
   const hash = user?.passwordHash ?? (await dummyPasswordHash());
   const matches = await verifyPassword(password, hash);
-  if (!user || user.disabledAt || !matches) {
+  const unverified = user && (user.role === "EMPLOYER" || user.role === "CANDIDATE") && !user.emailVerifiedAt;
+  if (!user || user.disabledAt || !matches || unverified) {
     await writeAudit({
       action: "auth.login_failed",
       entityType: "User",
@@ -115,6 +117,9 @@ export async function registerAccount(input: {
   const passwordHash = await hashPassword(input.password);
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
+    if (!existing.emailVerifiedAt && (existing.role === "EMPLOYER" || existing.role === "CANDIDATE")) {
+      await issueEmailVerification(existing.id, email);
+    }
     await writeAudit({
       action: "auth.register_unconfirmed",
       entityType: "User",
@@ -132,6 +137,7 @@ export async function registerAccount(input: {
       passwordHash,
     },
   });
+  await issueEmailVerification(user.id, email);
   await prisma.consentRecord.create({
     data: {
       subjectType: "User",

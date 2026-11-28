@@ -1,3 +1,4 @@
+import { purgeStaleSessions, type SessionPurgeCounts } from "@/lib/auth/session-purge";
 import type { CandidateStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { writeAudit } from "@/lib/audit";
@@ -31,6 +32,7 @@ export type RetentionReport = {
   limited: boolean;
   counts: RetentionCounts;
   processed: RetentionCounts;
+  sessions: SessionPurgeCounts;
   note: string;
 };
 
@@ -191,6 +193,8 @@ export async function runRetention(options?: {
     }
   }
 
+  const sessions = await purgeStaleSessions(now);
+
   await writeAudit({
     action: enforce ? "privacy.retention_enforce" : "privacy.retention_dry_run",
     entityType: "Retention",
@@ -205,6 +209,8 @@ export async function runRetention(options?: {
       unverifiedAccounts: unverifiedCount,
       processedUnverifiedAccounts: processed.unverifiedAccounts,
       purgeAudit: enforce && purgeAudit,
+      sessionsExpired: sessions.expired,
+      sessionsRevoked: sessions.revoked,
     },
     ip: options?.ip ?? "cron",
   });
@@ -221,8 +227,9 @@ export async function runRetention(options?: {
       unverifiedAccounts: unverifiedCount,
     },
     processed,
+    sessions,
     note: enforce
-      ? "Due helper profiles were redacted and due enquiries were deleted. Audit rows are removed only when purge is also on. See docs/retention.md."
-      : "Dry run. Counts are records past the policy windows. Set RETENTION_ENFORCE=true to redact and delete. See docs/retention.md.",
+      ? "Due helper profiles were redacted and due enquiries were deleted. Audit rows are removed only when purge is also on. Expired sessions, and revoked sessions past the retention window, are deleted on every run. See docs/retention.md."
+      : "Dry run for personal data. Counts are records past the policy windows. Set RETENTION_ENFORCE=true to redact and delete. Expired and revoked sessions are still deleted. See docs/retention.md.",
   };
 }

@@ -21,7 +21,8 @@ curl -sS -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/
 
 The response is counts and a note. It does not include names, emails, or document numbers.
 
-- `RETENTION_ENFORCE` unset or `false`: dry run. Nothing is deleted.
+- `RETENTION_ENFORCE` unset or `false`: dry run for personal data. Helper profiles, enquiries, accounts, and audit rows are not deleted.
+- Expired session rows are deleted on every run, including a dry run. Revoked session rows are deleted once they are older than `SESSION_REVOKED_RETENTION_HOURS` (default 24). The response field `sessions` reports those counts. They are not part of `processed`.
 - `RETENTION_ENFORCE=true`: each due helper profile is redacted with the same routine as the staff button (documents removed, passport, FIN, and medical fields cleared, linked account disabled). Due enquiries are deleted. Employer and helper accounts with no confirmed email, older than 14 days, are deleted when they have no placement past `APPLIED`. A row that cannot be deleted is skipped and counted in the log as `privacy.retention_unverified_skipped`, without the address.
 - `RETENTION_PURGE_AUDIT=true` together with enforce: audit rows older than the audit window are deleted. Leave this off until you have exported the log. The job writes its own audit row after the purge selection, so that new row stays.
 
@@ -31,4 +32,4 @@ Vercel does not run the route by itself in local Docker. Call it from cron, a Gi
 
 ## What it does not do
 
-It does not decide that a record may legally be deleted. A MOM file the agency has already submitted, or a record needed for a dispute, can sit inside these windows. Turn enforcement on only after someone who knows the agency's obligations has read the windows. The job does not send email, and it does not touch AI provider accounts.
+It does not decide that a record may legally be deleted. A MOM file the agency has already submitted, or a record needed for a dispute, can sit inside these windows. Service contracts and invoices are not deleted by this job. Turn enforcement on only after someone who knows the agency's obligations has read the windows. The job does not send email, and it does not touch AI provider accounts.

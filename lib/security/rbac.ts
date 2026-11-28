@@ -25,6 +25,7 @@ export const PERMISSIONS = [
   "rules:review",
   "rules:manage",
   "outcomes:write",
+  "billing:manage",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -53,6 +54,7 @@ const MATRIX: Record<Permission, readonly Role[]> = {
   "rules:review": ["ADMIN", "STAFF"],
   "rules:manage": ["ADMIN"],
   "outcomes:write": ["ADMIN", "STAFF"],
+  "billing:manage": ["ADMIN", "STAFF"],
 };
 
 export function hasPermission(role: Role, permission: Permission): boolean {

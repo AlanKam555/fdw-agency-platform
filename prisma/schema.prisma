@@ -161,6 +161,7 @@ model Session {
 
   @@index([userId])
   @@index([expiresAt])
+  @@index([revokedAt])
 }
 
 model RecoveryCode {
@@ -261,6 +262,7 @@ model Employer {
   interviews             InterviewRequest[]
   matches                Match[]
   placementOutcomes      PlacementOutcome[]
+  contracts              ServiceContract[]
 }
 
 model EmployerRequirement {
@@ -625,6 +627,83 @@ model PlacementOutcome {
   @@index([candidateId])
   @@index([employerId])
   @@index([matchId])
+}
+
+enum ContractStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  VOID
+}
+
+enum RecordedPaymentMethod {
+  BANK_TRANSFER
+  PAYNOW
+  CASH
+  CHEQUE
+  OTHER
+}
+
+// Record-keeping only. Amounts are integer cents. No card numbers, no processor tokens.
+model ServiceContract {
+  id          String         @id @default(cuid())
+  employerId  String
+  employer    Employer       @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  reference   String         @unique
+  title       String
+  status      ContractStatus @default(DRAFT)
+  feeCents    Int
+  currency    String         @default("SGD")
+  startsOn    DateTime
+  endsOn      DateTime?
+  notes       String         @default("")
+  createdById String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  invoices    Invoice[]
+
+  @@index([employerId])
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  contractId  String
+  contract    ServiceContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  number      String        @unique
+  status      InvoiceStatus @default(DRAFT)
+  amountCents Int
+  currency    String        @default("SGD")
+  issuedOn    DateTime?
+  dueOn       DateTime?
+  notes       String        @default("")
+  createdById String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  payments    PaymentRecord[]
+
+  @@index([contractId])
+}
+
+model PaymentRecord {
+  id           String                @id @default(cuid())
+  invoiceId    String
+  invoice      Invoice               @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amountCents  Int
+  paidOn       DateTime
+  method       RecordedPaymentMethod
+  reference    String                @default("")
+  notes        String                @default("")
+  recordedById String
+  createdAt    DateTime              @default(now())
+
+  @@index([invoiceId])
 }
 
 model AiUsageLog {

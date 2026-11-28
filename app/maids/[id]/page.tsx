@@ -41,7 +41,7 @@ export default async function MaidPage({ params }: { params: Promise<{ id: strin
       </div>
       <div>
         {helper.fictional ? (
-          <p className="text-xs tracking-[0.16em] text-[var(--brass)] uppercase">Fictional demonstration profile</p>
+          <p className="text-xs tracking-[0.16em] text-[var(--brass-ink)] uppercase">Fictional demonstration profile</p>
         ) : null}
         <h1 className="text-5xl">{helper.fullName}</h1>
         <p className="mt-2 text-lg">

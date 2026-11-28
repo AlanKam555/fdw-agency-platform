@@ -29,6 +29,11 @@ export default async function EmployerDetailPage({ params }: { params: Promise<{
       <p className="mt-2 text-sm">
         NRIC {employer.nricEnc ? "is stored encrypted" : "was not provided"}. EOP {employer.eopCompleted ? "completed" : "not recorded"}.
       </p>
+      <p className="mt-2 text-sm">
+        <Link className="underline" href={`/dashboard/contracts?employer=${employer.id}`}>
+          Contracts
+        </Link>
+      </p>
       <h2 className="mt-8 text-2xl">Requirements</h2>
       <ul className="mt-3 grid gap-2 text-sm">
         {employer.requirements.map((requirement) => (

@@ -35,7 +35,7 @@ export default async function CandidatesPage() {
                   <Link className="underline" href={`/dashboard/candidates/${candidate.id}`}>
                     {candidate.fullName}
                   </Link>
-                  {candidate.fictional ? <span className="ml-2 text-xs text-[var(--brass)]">fictional</span> : null}
+                  {candidate.fictional ? <span className="ml-2 text-xs text-[var(--brass-ink)]">fictional</span> : null}
                 </td>
                 <td>{STATUS_LABELS[candidate.status]}</td>
                 <td>{candidate.nationality}</td>

@@ -1,6 +1,6 @@
 {
   "name": "fdw-agency-platform",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "license": "MIT",
   "description": "Open-source workspace for a Singapore foreign domestic worker employment agency. Harbourlight is the fictional demo.",
@@ -50,6 +50,7 @@
     "zod": "^4.6.6"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.0",
     "@playwright/test": "^1.65.1",
     "@tailwindcss/turbopack": "4.3.3",
     "@types/bcryptjs": "^2.4.6",

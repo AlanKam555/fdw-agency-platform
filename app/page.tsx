@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { Portrait } from "@/components/portrait";
+import { brand } from "@/config/brand";
 import { AGENCY, services, testimonials } from "@/content/site";
+import { t, type MessageKey } from "@/lib/i18n";
+import { getLocale } from "@/lib/i18n/request";
+import { employmentAgencyJsonLd } from "@/lib/seo/structured-data";
 import { listPublicHelpers } from "@/lib/services/candidates";
 import { skillLabel } from "@/lib/labels";
 
@@ -9,40 +13,46 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const locale = await getLocale();
   const helpers = await listPublicHelpers({}).catch(() => []);
+  const jsonLd = employmentAgencyJsonLd({
+    fictionalDemo: brand.fictionalDemo,
+    name: brand.name,
+    legalName: brand.legalName,
+    url: process.env.APP_URL || "",
+    phone: brand.phone,
+    email: brand.email,
+    address: brand.address,
+    licenceNo: brand.licenceNo,
+  });
+  const steps: MessageKey[] = ["home.step1", "home.step2", "home.step3", "home.step4", "home.step5"];
   return (
     <div>
       <section className="mx-auto grid max-w-6xl items-end gap-10 px-4 py-14 md:grid-cols-[1.3fr_0.7fr]">
         <div>
-          <p className="text-sm tracking-[0.18em] text-[var(--brass)] uppercase">Employment agency · {AGENCY.city}</p>
+          <p className="text-sm tracking-[0.18em] text-[var(--brass-ink)] uppercase">{t(locale, "home.kicker")} · {AGENCY.city}</p>
           <h1 className="mt-3 max-w-xl text-5xl leading-[1.05] md:text-6xl">
-            Care for the household, with the paperwork kept in the open.
+            {t(locale, "home.title")}
           </h1>
           <p className="mt-5 max-w-xl text-lg text-[var(--ink)]/80">
-            {AGENCY.name} introduces foreign domestic workers to families in Singapore, then prepares the Ministry of Manpower file for a person to submit. Staff decide every match. AI only drafts words for review.
+            {AGENCY.name} {t(locale, "home.lede")}
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link className="btn" href="/employers/enquire">
-              Tell us about your household
+              {t(locale, "home.household")}
             </Link>
             <Link className="btn secondary" href="/maids">
-              See available helpers
+              {t(locale, "home.galleryLink")}
             </Link>
           </div>
         </div>
         <aside className="card p-6">
-          <p className="text-sm text-[var(--brass)]">How a placement moves</p>
+          <p className="text-sm text-[var(--brass-ink)]">{t(locale, "home.stepsTitle")}</p>
           <ol className="mt-4 grid gap-3 text-sm">
-            {[
-              "Helper applies, with consent for the data we actually need.",
-              "Staff screen documents and mark a profile available.",
-              "An employer shortlists and requests an interview.",
-              "Staff approve a match. A model can explain the score. It cannot decide.",
-              "Staff download a MOM pack and lodge it themselves.",
-            ].map((step, index) => (
+            {steps.map((step, index) => (
               <li key={step} className="flex gap-3">
                 <span className="display text-xl text-[var(--lagoon)]">{index + 1}</span>
-                <span>{step}</span>
+                <span>{t(locale, step)}</span>
               </li>
             ))}
           </ol>
@@ -60,9 +70,9 @@ export default async function HomePage() {
 
       <section className="mx-auto max-w-6xl px-4 py-14">
         <div className="flex items-end justify-between gap-4">
-          <h2 className="text-4xl">Helpers who agreed to be introduced</h2>
+          <h2 className="text-4xl">{t(locale, "home.helpersTitle")}</h2>
           <Link href="/maids" className="text-sm underline">
-            Full gallery
+            {t(locale, "home.fullGallery")}
           </Link>
         </div>
         <div className="mt-6 grid gap-4 md:grid-cols-3">
@@ -89,11 +99,11 @@ export default async function HomePage() {
                     </span>
                   ))}
                 </div>
-                {helper.fictional ? <p className="mt-3 text-xs uppercase tracking-wide text-[var(--brass)]">Fictional profile</p> : null}
+                {helper.fictional ? <p className="mt-3 text-xs uppercase tracking-wide text-[var(--brass-ink)]">{t(locale, "home.fictional")}</p> : null}
               </div>
             </Link>
           ))}
-          {helpers.length === 0 ? <p>No consented profiles are available yet.</p> : null}
+          {helpers.length === 0 ? <p>{t(locale, "home.empty")}</p> : null}
         </div>
       </section>
 
@@ -105,20 +115,13 @@ export default async function HomePage() {
           </footer>
         </blockquote>
       </section>
-      <script
-        type="application/ld+json"
-        nonce={nonce}
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "EmploymentAgency",
-            name: AGENCY.legalName,
-            address: AGENCY.address,
-            areaServed: "Singapore",
-            description: "Fictional demonstration agency for foreign domestic worker placement.",
-          }),
-        }}
-      />
+      {jsonLd ? (
+        <script
+          type="application/ld+json"
+          nonce={nonce}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      ) : null}
     </div>
   );
 }

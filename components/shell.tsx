@@ -7,6 +7,7 @@ const STAFF = [
   ["/dashboard/candidates", "Helpers"],
   ["/dashboard/candidates/new", "Intake"],
   ["/dashboard/employers", "Employers"],
+  ["/dashboard/contracts", "Contracts"],
   ["/dashboard/enquiries", "Enquiries"],
   ["/dashboard/matching", "Matching"],
   ["/dashboard/outcomes", "Outcomes"],
@@ -20,19 +21,23 @@ const STAFF = [
   ["/dashboard/funnel", "Funnel"],
   ["/dashboard/photos", "Photo review"],
   ["/dashboard/audit", "Audit log"],
+  ["/dashboard/api", "API"],
 ];
 
 export function Shell({
   role,
   name,
   children,
+  items,
 }: {
   role: Role;
   name: string;
   children: React.ReactNode;
+  items?: [string, string][];
 }) {
   const links =
-    role === "EMPLOYER"
+    items ??
+    (role === "EMPLOYER"
       ? [
           ["/employer", "Home"],
           ["/employer/requirements", "Requirements"],
@@ -47,12 +52,12 @@ export function Shell({
           ]
         : role === "ADMIN"
           ? [...STAFF, ["/dashboard/users", "Users"], ["/dashboard/settings", "Settings"]]
-          : STAFF;
+          : STAFF);
 
   return (
     <div className="mx-auto grid min-h-screen max-w-6xl gap-6 px-4 py-6 md:grid-cols-[220px_1fr]">
       <aside className="card h-fit p-4">
-        <p className="text-xs tracking-[0.14em] text-[var(--brass)] uppercase">{role.toLowerCase()}</p>
+        <p className="text-xs tracking-[0.14em] text-[var(--brass-ink)] uppercase">{role.toLowerCase()}</p>
         <p className="display mt-1 text-2xl">{name}</p>
         <nav className="mt-4 grid gap-2 text-sm">
           {links.map(([href, label]) => (

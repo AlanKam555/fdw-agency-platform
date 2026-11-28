@@ -19,7 +19,7 @@ export default async function CarePage({ params }: { params: Promise<{ slug: str
   if (!page) notFound();
   return (
     <article className="mx-auto max-w-3xl px-4 py-12">
-      <p className="text-sm text-[var(--brass)]">{AGENCY.licence}</p>
+      <p className="text-sm text-[var(--brass-ink)]">{AGENCY.licence}</p>
       <h1 className="mt-2 text-5xl">{page.title}</h1>
       <p className="mt-4 text-lg leading-8">{page.body}</p>
       <p className="mt-6 text-sm leading-6">{AGENCY.disclaimer}</p>

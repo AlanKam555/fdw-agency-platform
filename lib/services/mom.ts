@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/db";
 import { writeAudit } from "@/lib/audit";
 import { brand } from "@/config/brand";
-import { momRules } from "@/config/mom-rules";
+import { effectiveMomRules } from "@/lib/mom/effective-rules";
 import { buildChecklist, reminderSeeds, type MomPackInput } from "@/lib/mom/checklist";
 import { renderMomPdf } from "@/lib/mom/pdf";
+import { scheduleDatedReminders, withDueDates } from "@/lib/reminders/schedule";
 import type { momAttestationSchema } from "@/lib/validation/schemas";
 import type { z } from "zod";
 
@@ -47,8 +48,20 @@ export async function prepareMomCase(input: {
     },
     attestation: input.attestation,
   };
-  const checklist = buildChecklist(packInput, momRules);
-  const reminders = reminderSeeds(checklist.items);
+  const rules = await effectiveMomRules();
+  const checklist = buildChecklist(packInput, rules);
+  const dated = scheduleDatedReminders({
+    arrivalOn: input.attestation.arrivalOn ?? null,
+    workPermitExpiresOn: input.attestation.workPermitExpiresOn ?? null,
+    insuranceRenewsOn: input.attestation.insuranceRenewsOn ?? null,
+    bondRenewsOn: input.attestation.bondRenewsOn ?? null,
+    restDaysPerMonth: input.attestation.restDaysPerMonth,
+    holidays: rules.publicHolidays,
+    medicalExamDays: rules.medicalExam.deadlineDaysAfterArrival,
+    sipDays: rules.sip.deadlineDaysAfterArrivalExcludingSundayAndHolidays,
+    firstTimeInSingapore: match.candidate.firstTimeInSingapore,
+  });
+  const reminders = withDueDates(reminderSeeds(checklist.items), dated);
 
   const momCase = await prisma.momCase.upsert({
     where: { matchId: match.id },
@@ -63,7 +76,7 @@ export async function prepareMomCase(input: {
         proposedSubmissionDate: input.attestation.proposedSubmissionDate.toISOString(),
         portal: "Staff submit on MOM WP Online with Singpass or CorpPass. This product does not submit.",
       },
-      rulesSnapshot: momRules,
+      rulesSnapshot: rules,
       ready: checklist.ready,
       reminders: { create: reminders },
     },
@@ -77,7 +90,7 @@ export async function prepareMomCase(input: {
         proposedSubmissionDate: input.attestation.proposedSubmissionDate.toISOString(),
         portal: "Staff submit on MOM WP Online with Singpass or CorpPass. This product does not submit.",
       },
-      rulesSnapshot: momRules,
+      rulesSnapshot: rules,
       ready: checklist.ready,
       reminders: { deleteMany: {}, create: reminders },
     },
@@ -102,6 +115,7 @@ export async function momPdf(matchId: string) {
   });
   if (!momCase) return null;
   const items = momCase.checklist as Parameters<typeof renderMomPdf>[0]["items"];
+  const rules = await effectiveMomRules();
   const bytes = await renderMomPdf({
     agencyName: brand.legalName,
     helperName: momCase.match.candidate.fullName,
@@ -109,7 +123,7 @@ export async function momPdf(matchId: string) {
     generatedOn: new Date().toISOString(),
     ready: momCase.ready,
     items,
-    rules: momRules,
+    rules,
   });
   return { bytes, fileName: `mom-pack-${matchId}.pdf` };
 }

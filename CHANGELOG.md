@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.0 — 2026-11-26
+
+### Added
+
+- Reminder email with a pluggable driver: `console` (default), SMTP, Resend, or Amazon SES. The cron stays a dry run unless `REMINDERS_SEND=true`. A reminder type must be opted in, or that one reminder approved, before a row is eligible. Each send is stored once per reminder, recipient, and due date. Recipients can unsubscribe with a signed link. The job is rate-limited and audit-logged. Addresses and message text are not logged.
+- Singapore public holidays for 2025, 2026, and 2027, transcribed from the MOM public holidays page on 2026-11-26, including the Mondays MOM lists when a holiday falls on Sunday. Staff can add or suppress a date. 2027 lunar dates must be re-checked when they are gazetted.
+- An admin and staff MOM rules page. It lists every catalog value, the MOM source, and the last verified date. Values older than `MOM_RULE_STALE_DAYS` (default 90) are marked stale on that page and on the staff desk. An admin can mark a rule re-verified or save an override with a source URL and a note. The catalog numbers were not changed.
+- Placement outcomes at 1, 3, and 6 months, or when a placement ends. Staff record duration, completion, a reason category, employer and helper satisfaction, and a staff-only note. Outcomes feed weight suggestions. The suggestion shows its evidence count and is not applied until staff save it. The fairness audit groups outcomes by nationality and warns when a group has fewer than five rows.
+- Playwright coverage for the public site, helper application, employer registration, staff TOTP setup, matching, interview request, MOM pack PDF, reminder dry run, rules review, and outcome capture. CI runs it against Postgres, a production build, and MinIO.
+
+### Security
+
+- Existing session revocation, `style-src-attr 'none'`, private storage, sign-in lockout, and staff TOTP are unchanged.
+- Reminder delivery rows store a hash of the address. Unsubscribe confirmation is a POST, so opening the link does not opt anyone out. Helper addresses are excluded unless `REMINDER_INCLUDE_HELPER=true`.
+- Docker Compose and CI use a Chainguard MinIO build. The old `minio/minio` image on Docker Hub is no longer anonymously pullable. The bucket stays private.
+
 ## 0.3.0 — 2026-11-26
 
 ### Security

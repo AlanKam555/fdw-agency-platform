@@ -55,6 +55,22 @@ export default async function MomCasePage({ params }: { params: Promise<{ matchI
               Proposed submission date
               <input className="field" type="date" name="proposedSubmissionDate" required />
             </label>
+            <label className="label">
+              Arrival date, if known
+              <input className="field" type="date" name="arrivalOn" />
+            </label>
+            <label className="label">
+              Work permit expiry, if known
+              <input className="field" type="date" name="workPermitExpiresOn" />
+            </label>
+            <label className="label">
+              Insurance renewal, if known
+              <input className="field" type="date" name="insuranceRenewsOn" />
+            </label>
+            <label className="label">
+              Security bond renewal, if known
+              <input className="field" type="date" name="bondRenewsOn" />
+            </label>
           </JsonForm>
         </div>
       </section>
@@ -80,12 +96,20 @@ export default async function MomCasePage({ params }: { params: Promise<{ matchI
             <h2 className="text-2xl">Reminders</h2>
             <ul className="mt-3 grid gap-3">
               {match.momCase.reminders.map((reminder) => (
-                <li key={reminder.id}>
+                <li key={reminder.id} className="grid gap-2">
                   <JsonForm action={`/api/staff/reminders/${reminder.id}`} submitLabel={reminder.done ? "Mark open" : "Mark done"}>
                     <span className="text-sm">
-                      {reminder.title} — {reminder.dueHint}
+                      {reminder.title}
+                      {reminder.dueOn ? ` · due ${reminder.dueOn.toISOString().slice(0, 10)}` : ""} — {reminder.dueHint}
                     </span>
                   </JsonForm>
+                  {reminder.approvedAt ? (
+                    <p className="text-sm">Approved for email.</p>
+                  ) : (
+                    <JsonForm action={`/api/staff/reminders/${reminder.id}/approve`} submitLabel="Approve email" refresh={false}>
+                      <span className="text-sm">Approve this reminder on its own, without opting in the whole type.</span>
+                    </JsonForm>
+                  )}
                 </li>
               ))}
             </ul>

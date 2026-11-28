@@ -15,6 +15,10 @@ Every numeric rule lives in `config/mom-rules.ts` and can be overridden with the
 - [Medical examination](https://www.mom.gov.sg/passes-and-permits/work-permit-for-foreign-domestic-worker/eligibility-and-requirements/medical-examination) — within 14 days of arrival.
 - [Work Permit hub](https://www.mom.gov.sg/passes-and-permits/work-permit-for-foreign-domestic-worker)
 
-`publicHolidays` is empty until an operator maintains Singapore public holidays. SIP reminders mention that exclusion. They do not compute a calendar date from an empty list.
+`publicHolidays` is filled from the MOM public holidays page for 2025, 2026, and 2027 (`config/public-holidays.ts`, last verified 2026-11-26). Each year records that source URL. A Monday is included when MOM says it is a holiday if the rest day falls on the Sunday holiday. 2027 lunar dates (Chinese New Year, Hari Raya Puasa, Hari Raya Haji, Vesak Day, and Deepavali) can move when the holidays are gazetted. Re-check them before relying on 2027. Staff can add or suppress a date under Holidays. `MOM_PUBLIC_HOLIDAYS` still replaces the whole list when it is set.
+
+SIP dates exclude Sunday and those holidays and count Saturday. That is separate from the Employers' Orientation Programme, which uses working days and skips Saturday as well. Medical examination dates are calendar days. Permit renewal lead time (`REMINDER_PERMIT_LEAD_DAYS`, default 30) and the 30-day rest-day follow-up are agency windows, not MOM figures.
+
+The rules review page lists every catalog value with its unit, MOM link, last verified date, and who verified it. Nothing on that page invents a new figure. A row needs verification until an admin marks it. Rows older than `MOM_RULE_STALE_DAYS` (default 90) are also flagged on the staff desk.
 
 The PDF states that it is a preparation pack, not a lodged application.

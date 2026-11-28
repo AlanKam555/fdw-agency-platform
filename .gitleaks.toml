@@ -16,6 +16,7 @@ paths = [
 regexes = [
   '''MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=''',
   '''ci-auth-secret-not-for-production-use-32''',
+  '''ci-cron-secret-not-for-production''',
   '''Harbourlight-Dev-1''',
   '''minio-dev-not-for-production''',
 ]

@@ -20,6 +20,11 @@ export const PERMISSIONS = [
   "employer:portal",
   "candidate:portal",
   "documents:staff",
+  "reminders:manage",
+  "holidays:manage",
+  "rules:review",
+  "rules:manage",
+  "outcomes:write",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -43,6 +48,11 @@ const MATRIX: Record<Permission, readonly Role[]> = {
   "employer:portal": ["EMPLOYER"],
   "candidate:portal": ["CANDIDATE"],
   "documents:staff": ["ADMIN", "STAFF"],
+  "reminders:manage": ["ADMIN", "STAFF"],
+  "holidays:manage": ["ADMIN", "STAFF"],
+  "rules:review": ["ADMIN", "STAFF"],
+  "rules:manage": ["ADMIN"],
+  "outcomes:write": ["ADMIN", "STAFF"],
 };
 
 export function hasPermission(role: Role, permission: Permission): boolean {

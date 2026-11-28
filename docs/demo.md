@@ -55,9 +55,11 @@ Staff and admin are not given a TOTP secret in the seed. The first sign-in start
 1. Sign out and sign in as `staff@harbourlight.example`.
 2. Candidates. Open a profile. Status changes are one step at a time.
 3. Matching. Run a ranking. The page shows the score breakdown. Protected traits are not on the form.
-4. Change a weight or use the what-if controls, then compare two helpers. The fairness note is about nationality counts, not a ranking input.
-5. Approve a match, open the MOM pack, and download the PDF. The PDF says it is not a submission.
-6. Marketing. Generate a draft. Approval stays inside the app. The compliance check refuses a draft that drops the licence line.
+4. Change a weight or use the what-if controls, then compare two helpers. The fairness note is about nationality counts, not a ranking input. Outcome evidence on the same page is a suggestion. The saved weight boxes do not change until you save.
+5. Approve a match, open the MOM pack, and download the PDF. The PDF says it is not a submission. Optional dates on the pack feed reminder due dates. Approve email on one reminder, or opt in a type under Reminders. The cron is a dry run until `REMINDERS_SEND=true`.
+6. MOM rules lists every catalog value and its MOM link. Each row says it needs verification until an admin marks it. Holidays shows 2025–2027 and the 2027 gazette note.
+7. Outcomes. Record a check-in or an ending for an approved match. Notes stay on that page. Matching then shows the evidence count. Weights are still not applied.
+8. Marketing. Generate a draft. Approval stays inside the app. The compliance check refuses a draft that drops the licence line.
 
 ## 5. Admin
 

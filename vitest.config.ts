@@ -14,6 +14,7 @@ export default defineConfig({
     environment: "node",
     setupFiles: ["./tests/setup.ts"],
     fileParallelism: false,
+    exclude: ["**/node_modules/**", "**/dist/**", "e2e/**", "playwright-report/**", "test-results/**"],
   },
   resolve: {
     alias: { "@": path.resolve(__dirname, ".") },

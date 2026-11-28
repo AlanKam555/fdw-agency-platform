@@ -7,6 +7,7 @@ import { rankCandidates } from "@/lib/matching/score";
 import { DEFAULT_WEIGHTS, WEIGHT_KEYS, coerceWeights, weightsAreValid } from "@/lib/matching/weights";
 import { prisma } from "@/lib/db";
 import { requestFromPayload } from "@/lib/services/employers";
+import { outcomeSuggestion } from "@/lib/services/outcomes";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,7 @@ export default async function RequirementMatchesPage({
   if (!requirement) notFound();
   const stored = await prisma.matchWeightProfile.findUnique({ where: { requirementId } });
   const savedWeights = coerceWeights(stored?.weights ?? DEFAULT_WEIGHTS);
+  const advice = await outcomeSuggestion(requirement.employerId, savedWeights);
   const previewWeights = coerceWeights({
     ...savedWeights,
     ...Object.fromEntries(
@@ -104,6 +106,9 @@ export default async function RequirementMatchesPage({
       </div>
       <section className="card mt-6 p-4">
         <h2 className="text-2xl">Weights</h2>
+        <p className="mt-1 text-sm">
+          Outcome evidence: {advice.evidenceCount}. Suggested skills {advice.suggestion.skills}. These suggestions are not applied until you save them.
+        </p>
         <p className="mt-1 text-sm">Preview does not save. Save, then re-rank, when the numbers should stick. They must sum to 100.</p>
         <form className="mt-3 grid gap-3" method="get">
           <input type="hidden" name="preview" value="1" />

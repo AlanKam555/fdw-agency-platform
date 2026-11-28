@@ -13,6 +13,8 @@ const eslintConfig = defineConfig([
     "storage/**",
     "coverage/**",
     "prisma/migrations/**",
+    "playwright-report/**",
+    "test-results/**",
   ]),
 ]);
 

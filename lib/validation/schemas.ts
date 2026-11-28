@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { REMINDER_TYPES } from "@/lib/reminders/catalog";
+import { OUTCOME_COMPLETIONS, TERMINATION_REASONS } from "@/lib/matching/outcomes";
 
 export const PDPA_VERSION = "HL-PDPA-2026-11";
 
@@ -42,6 +44,10 @@ const email = z.string().trim().email().max(160);
 const phone = z.string().trim().min(8).max(20);
 const money = z.coerce.number().int().min(0).max(20000);
 const dateField = z.coerce.date();
+const optionalDate = z.preprocess((value) => {
+  if (value == null || value === "") return undefined;
+  return value;
+}, z.coerce.date().optional());
 
 export const passwordSchema = z
   .string()
@@ -229,6 +235,84 @@ export const momAttestationSchema = z.object({
   salaryAgreedSgd: z.coerce.number().int().min(0).max(20000),
   restDaysPerMonth: z.coerce.number().int().min(0).max(8),
   proposedSubmissionDate: dateField,
+  arrivalOn: optionalDate,
+  workPermitExpiresOn: optionalDate,
+  insuranceRenewsOn: optionalDate,
+  bondRenewsOn: optionalDate,
+});
+
+export const reminderOptInSchema = z.object({
+  code: z.enum(REMINDER_TYPES.map((item) => item.code) as [string, ...string[]]),
+  enabled: formBoolean.default(false),
+});
+
+const isoDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
+const sourceUrl = z.string().trim().url().max(300);
+
+export const holidayAdjustmentSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("add"),
+    date: isoDay,
+    name: z.string().trim().min(2).max(80),
+    sourceUrl,
+    note: z.string().trim().max(500).default(""),
+  }),
+  z.object({
+    action: z.literal("suppress"),
+    date: isoDay,
+    sourceUrl,
+    note: z.string().trim().min(2).max(500),
+  }),
+  z.object({
+    action: z.literal("remove"),
+    id: z.string().min(1).max(40),
+  }),
+]);
+
+export const momRuleReviewSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("verify"), key: z.string().trim().min(1).max(80) }),
+  z.object({
+    action: z.literal("override"),
+    key: z.string().trim().min(1).max(80),
+    value: z.string().trim().min(1).max(500),
+    sourceUrl,
+    note: z.string().trim().min(2).max(500),
+  }),
+  z.object({ action: z.literal("clear"), key: z.string().trim().min(1).max(80) }),
+]);
+
+export const placementOutcomeSchema = z
+  .object({
+    matchId: z.string().trim().min(1).max(40),
+    startedOn: dateField,
+    endedOn: optionalDate,
+    checkInMonth: z.preprocess((value) => {
+      if (value == null || value === "") return undefined;
+      return value;
+    }, z.coerce.number().int().optional()),
+    completion: z.enum(OUTCOME_COMPLETIONS),
+    reasonCategory: z.string().trim().max(40).default(""),
+    employerSatisfaction: z.coerce.number().int().min(1).max(5),
+    helperSatisfaction: z.coerce.number().int().min(1).max(5),
+    notes: z.string().trim().max(2000).default(""),
+  })
+  .superRefine((value, ctx) => {
+    if (value.completion === "EARLY_TERMINATION" && !TERMINATION_REASONS.includes(value.reasonCategory as (typeof TERMINATION_REASONS)[number])) {
+      ctx.addIssue({ code: "custom", path: ["reasonCategory"], message: "Choose a reason category." });
+    }
+    if (value.completion === "CHECK_IN" && value.checkInMonth !== 1 && value.checkInMonth !== 3 && value.checkInMonth !== 6) {
+      ctx.addIssue({ code: "custom", path: ["checkInMonth"], message: "Check-ins are at 1, 3, or 6 months." });
+    }
+    if (value.completion !== "CHECK_IN" && !value.endedOn) {
+      ctx.addIssue({ code: "custom", path: ["endedOn"], message: "Record the end date." });
+    }
+    if (value.endedOn && value.endedOn < value.startedOn) {
+      ctx.addIssue({ code: "custom", path: ["endedOn"], message: "The end date is before the start date." });
+    }
+  });
+
+export const unsubscribeSchema = z.object({
+  token: z.string().trim().min(20).max(4000),
 });
 
 export const staffUserSchema = z.object({

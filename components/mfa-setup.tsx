@@ -57,7 +57,7 @@ export function MfaSetup({ enabled, staff }: { enabled: boolean; staff: boolean 
       ) : null}
       {secret ? (
         <div className="mt-3 grid gap-2 text-sm">
-          <p className="break-all font-mono">{secret}</p>
+          <p className="break-all font-mono" data-testid="totp-secret">{secret}</p>
           <p className="break-all">{otpauthUrl}</p>
           <form
             className="grid gap-2"

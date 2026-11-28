@@ -1,4 +1,4 @@
-const REDACTED_KEY = /password|secret|token|totp|recovery|otp|authorization|cookie|email|key/i;
+const REDACTED_KEY = /password|secret|token|totp|recovery|otp|authorization|cookie|email|key|body|subject|recipient/i;
 
 /** One JSON line. Keys that look like secrets or contact data are dropped. */
 export function logEvent(

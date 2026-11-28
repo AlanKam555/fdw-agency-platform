@@ -1,8 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { writeAudit } from "@/lib/audit";
-import { biasReport } from "@/lib/matching/fairness";
-import { coerceWeights, suggestWeightNudge, weightsAreValid, type ScoreWeights } from "@/lib/matching/weights";
+import { biasReport, outcomeBiasReport } from "@/lib/matching/fairness";
+import { suggestFromEvidence } from "@/lib/matching/outcomes";
+import { coerceWeights, weightsAreValid, type ScoreWeights } from "@/lib/matching/weights";
 
 function tokenHash(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -165,7 +166,26 @@ export async function recordInterviewFeedback(input: {
     orderBy: { updatedAt: "desc" },
   });
   const current = coerceWeights(profile?.weights);
-  const suggestion = suggestWeightNudge(current, input.gaps);
+  const outcomes = await prisma.placementOutcome.findMany({
+    where: { employerId: interview.employerId },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+    select: {
+      completion: true,
+      reasonCategory: true,
+      employerSatisfaction: true,
+      helperSatisfaction: true,
+    },
+  });
+  const advice = suggestFromEvidence(current, {
+    gaps: input.gaps,
+    outcomes: outcomes.map((row) => ({
+      completion: row.completion as "COMPLETED" | "EARLY_TERMINATION" | "CHECK_IN",
+      reasonCategory: row.reasonCategory,
+      employerSatisfaction: row.employerSatisfaction,
+      helperSatisfaction: row.helperSatisfaction,
+    })),
+  });
   await prisma.interviewFeedback.upsert({
     where: { interviewId: interview.id },
     create: {
@@ -174,7 +194,7 @@ export async function recordInterviewFeedback(input: {
       outcome: input.outcome,
       gaps: input.gaps,
       notes: input.notes,
-      suggestedWeights: suggestion,
+      suggestedWeights: advice.suggestion,
       createdById: input.actorId,
     },
     update: {
@@ -182,7 +202,7 @@ export async function recordInterviewFeedback(input: {
       outcome: input.outcome,
       gaps: input.gaps,
       notes: input.notes,
-      suggestedWeights: suggestion,
+      suggestedWeights: advice.suggestion,
     },
   });
   await writeAudit({
@@ -193,7 +213,7 @@ export async function recordInterviewFeedback(input: {
     metadata: { outcome: input.outcome, gaps: input.gaps },
     ip: input.ip,
   });
-  return { ok: true as const, suggestion };
+  return { ok: true as const, suggestion: advice.suggestion, evidenceCount: advice.evidenceCount };
 }
 
 export async function matchingBiasReport() {
@@ -208,6 +228,22 @@ export async function matchingBiasReport() {
       eligible: match.eligible,
       score: match.score,
       approved: match.decision === "STAFF_APPROVED",
+    })),
+  );
+}
+
+export async function placementOutcomeAudit() {
+  const rows = await prisma.placementOutcome.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 500,
+    include: { candidate: { select: { nationality: true } } },
+  });
+  return outcomeBiasReport(
+    rows.map((row) => ({
+      nationality: row.candidate.nationality,
+      completion: row.completion as "COMPLETED" | "EARLY_TERMINATION" | "CHECK_IN",
+      employerSatisfaction: row.employerSatisfaction,
+      helperSatisfaction: row.helperSatisfaction,
     })),
   );
 }

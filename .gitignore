@@ -34,3 +34,5 @@ yarn-error.log*
 /tmp
 /test-private
 .playwright-mcp
+/playwright-report
+/test-results

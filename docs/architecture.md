@@ -36,15 +36,21 @@ Pages under `app/` are the public site, the helper portal, the employer portal, 
 
 | Path | Role |
 | --- | --- |
-| `lib/services` | Use cases: accounts, applications, employers, matching, MOM packs, marketing, redaction |
-| `lib/matching` | Deterministic score, weights, explanation facts, fairness audit |
-| `lib/mom` | Eligibility, checklist, dates, PDF |
+| `lib/services` | Use cases: accounts, applications, employers, matching, MOM packs, reminders, outcomes, marketing, redaction |
+| `lib/matching` | Deterministic score, weights, explanation facts, fairness audit, outcome suggestions |
+| `lib/mom` | Eligibility, checklist, dates, public-holiday adjustments, rule review, PDF |
+| `lib/email` | Console, SMTP, Resend, and SES drivers, plus signed unsubscribe tokens |
+| `lib/reminders` | Reminder types, due dates, and the dry-run or send job |
 | `lib/ai` | Provider list, fallback chain, budgets, prompt guard |
 | `lib/security` | Passwords, CSRF, CSP, rate limit, RBAC |
 | `lib/privacy` | Notice text and the retention job |
 | `prisma` | Schema, migrations, fictional seed |
 
-Staff actions that change a record go through `writeAudit`. The audit metadata helper drops keys that look like document numbers.
+Staff actions that change a record go through `writeAudit`. The audit metadata helper drops keys that look like document numbers. Reminder audits store the type, status, and driver. They do not store an address or a message.
+
+`GET /api/cron/reminders` authorises with `CRON_SECRET` and `timingSafeEqual`. It records a delivery row once per reminder, recipient, and due date. `REMINDERS_SEND` must be `true` or the row stays a dry run. A type opt-in or an approval on that reminder is required first. The email driver is selected with `EMAIL_DRIVER`.
+
+Public holiday dates used by deadline maths come from `config/public-holidays.ts`, then from any staff adjustment, unless `MOM_PUBLIC_HOLIDAYS` replaces the list. MOM catalog overrides live in `MomRuleState` and are applied by `effectiveMomRules()` when a pack is built.
 
 ## AI boundary
 

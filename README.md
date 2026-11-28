@@ -21,7 +21,7 @@ Use Node.js 22 and PostgreSQL 16. Every value in [`.env.example`](.env.example) 
 docker compose up --build
 ```
 
-Open http://localhost:3000. Postgres keeps its data in the `pgdata` volume. The app container runs migrations on startup. To load the fictional Harbourlight accounts as well:
+Open http://localhost:3000. Postgres keeps its data in the `pgdata` volume. The app container runs migrations on startup. Compose starts a private MinIO bucket for documents. The image is a Chainguard MinIO build, because `minio/minio` is no longer anonymously pullable. To load the fictional Harbourlight accounts as well:
 
 ```bash
 SEED_DEMO=true docker compose up --build
@@ -84,7 +84,9 @@ npm test
 npm run build
 ```
 
-Tests expect `DATABASE_URL`, `AUTH_SECRET`, and `FIELD_ENCRYPTION_KEY`. GitHub Actions starts PostgreSQL and runs lint, typecheck, tests, and the production build. CodeQL and gitleaks run as separate workflows. The CI permission is `contents: read`.
+Tests expect `DATABASE_URL`, `AUTH_SECRET`, and `FIELD_ENCRYPTION_KEY`. GitHub Actions starts PostgreSQL and runs lint, typecheck, tests, and the production build. A second job runs `npm run test:e2e` against that build, Postgres, and MinIO, and uploads the Playwright report if the job fails. CodeQL and gitleaks run as separate workflows. The CI permission is `contents: read`.
+
+`npm run test:e2e` starts the production server. Set `CRON_SECRET`, point storage at a private bucket, and seed the Harbourlight demo first. The demo accounts are not pre-enrolled in TOTP.
 
 ## Deploy on Vercel
 
@@ -97,7 +99,7 @@ Tests expect `DATABASE_URL`, `AUTH_SECRET`, and `FIELD_ENCRYPTION_KEY`. GitHub A
 5. For more than one instance, set `RATE_LIMIT_DRIVER=upstash` (or `redis`) and the matching URL and token. Sign-in lockout uses that same store. The defaults stay in memory. `MFA_GRACE_DAYS` defaults to 7. `TOTP_ENCRYPTION_KEY` is optional and otherwise uses `FIELD_ENCRYPTION_KEY`.
 6. Build command: `npm run build` (it runs `prisma generate`). Release command or a one-off job: `npx prisma migrate deploy`.
 7. Do not run the seed against production.
-8. `vercel.json` schedules `GET /api/cron/reminders` and `GET /api/cron/retention`. Set `CRON_SECRET`. Vercel sends it as `Authorization: Bearer <CRON_SECRET>`. The reminder route lists due reminders and does not send email. The retention route is a dry run until `RETENTION_ENFORCE=true`. See [docs/retention.md](docs/retention.md).
+8. `vercel.json` schedules `GET /api/cron/reminders` and `GET /api/cron/retention`. Set `CRON_SECRET`. Vercel sends it as `Authorization: Bearer <CRON_SECRET>`. Reminders are a dry run until `REMINDERS_SEND=true`, and a type must be opted in (or that reminder approved) before it is eligible. The default driver is `console`. See `.env.example` for SMTP, Resend, and SES. The retention route is a dry run until `RETENTION_ENFORCE=true`. See [docs/retention.md](docs/retention.md).
 9. Re-read the MOM pages cited in `config/mom-rules.ts` and update the numbers. They are flagged `verify against current MOM guidance`.
 
 The app binds to `0.0.0.0` and the platform port. No background worker is required for the request path. Cron routes are the only scheduled work, and an external caller has to invoke them.
@@ -120,7 +122,15 @@ The app binds to `0.0.0.0` and the platform port. No background worker is requir
 | `S3_ENDPOINT`, `S3_FORCE_PATH_STYLE` | Custom endpoint. Path-style defaults on when an endpoint is set |
 | `S3_SSE`, `S3_KMS_KEY_ID` | `AES256` or `aws:kms`. KMS needs the key id |
 | `RATE_LIMIT_DRIVER` | `memory`, `upstash`, or `redis`. Lockout uses this store |
-| `CRON_SECRET` | Bearer token for cron routes |
+| `CRON_SECRET` | Bearer token for cron routes. Compared with `timingSafeEqual` |
+| `EMAIL_DRIVER` | `console` (default), `smtp`, `resend`, or `ses` |
+| `EMAIL_FROM` | From address for SMTP, and the fallback for Resend and SES |
+| `REMINDERS_SEND` | `true` sends. Anything else is a dry run |
+| `REMINDER_PERMIT_LEAD_DAYS` | Agency follow-up before a recorded permit expiry. Default 30. Not a MOM figure |
+| `REMINDER_INCLUDE_HELPER` | `true` also emails the helper. Default off |
+| `EMAIL_STAFF_INBOX` | Optional extra recipient for interview reminders |
+| `MOM_RULE_STALE_DAYS` | Age, in days, before a MOM rule row is marked stale. Default 90 |
+| `MOM_PUBLIC_HOLIDAYS` | Optional comma-separated `YYYY-MM-DD` list. When empty, the transcribed MOM list is used |
 
 ## Security
 

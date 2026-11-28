@@ -51,6 +51,9 @@ const GAP_TO_WEIGHT: Record<string, WeightKey> = {
   language: "languages",
   care: "careNeeds",
   experience: "experience",
+  salary: "salary",
+  availability: "availability",
+  placement: "placement",
 };
 
 /** Moves five points from a donor factor. Does not add nationality, age, or any protected trait. */

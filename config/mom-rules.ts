@@ -1,3 +1,5 @@
+import { officialHolidayDates } from "@/config/public-holidays";
+
 /**
  * Configurable Ministry of Manpower (MOM) migrant domestic worker (MDW)
  * work-permit preparation values.
@@ -171,6 +173,7 @@ export function loadMomRules(base: MomRules = transcribedMomRules): MomRules {
   if (countries && countries.length) rules.fdw.approvedSourceCountries = countries;
   const holidays = process.env.MOM_PUBLIC_HOLIDAYS?.split(",").map((item) => item.trim()).filter(Boolean);
   if (holidays && holidays.length) rules.publicHolidays = holidays;
+  else if (rules.publicHolidays.length === 0) rules.publicHolidays = officialHolidayDates();
   const exempt = process.env.MOM_BOND_EXEMPT_NATIONALITIES?.split(",").map((item) => item.trim()).filter(Boolean);
   if (exempt && exempt.length) rules.securityBond.exemptNationalities = exempt;
   return rules;

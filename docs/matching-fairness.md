@@ -16,9 +16,11 @@ Weights sum to 100:
 
 Equal scores are ordered by candidate id. Age and nationality are not tie-breakers.
 
-Staff can save a different weight set per requirement. Extra factors — semantic similarity, proficiency, care needs, and placement kind (new hire, transfer, returning) — default to zero so the original five factors still sum to 100. A what-if preview on the requirement page does not write those weights. Interview feedback can suggest moving five points toward a gap. The suggestion is stored and shown. It is not applied unless staff save it.
+Staff can save a different weight set per requirement. Extra factors — semantic similarity, proficiency, care needs, and placement kind (new hire, transfer, returning) — default to zero so the original five factors still sum to 100. A what-if preview on the requirement page does not write those weights. Interview feedback and placement outcomes can suggest moving five points toward a gap. The suggestion stores the evidence count and is shown as not applied. Nothing writes `appliedAt`. Staff save the weights themselves.
 
-Semantic similarity uses an embedding provider when one is configured and the semantic weight is above zero. Otherwise it uses a deterministic token overlap so the score does not depend on the network. Nationality is grouped only in the fairness audit. It is not a weight. The audit tells staff to review a nationality group when its eligible mean is at least 15 points from the overall mean and the group has at least two eligible scores.
+Placement outcomes are recorded by staff when a placement ends or at a 1, 3, or 6 month check-in. The record has duration, completion, a reason category, employer satisfaction, helper satisfaction, and a staff-only note. An early ending, or employer satisfaction of 2 or lower, can suggest a weight move for a mapped reason (skill, language, care, experience, salary, availability, or transfer). Helper satisfaction does not move a weight. Religion, race, and pregnancy are not collected.
+
+Semantic similarity uses an embedding provider when one is configured and the semantic weight is above zero. Otherwise it uses a deterministic token overlap so the score does not depend on the network. Nationality is grouped only in the fairness audit. It is not a weight. The score audit tells staff to review a nationality group when its eligible mean is at least 15 points from the overall mean and the group has at least two eligible scores. The outcome audit does the same for employer satisfaction, with a gap of 1.5 points, and it marks any group of fewer than five outcomes as a small sample that should not be read as a pattern.
 
 ## What is a gate, not a score
 

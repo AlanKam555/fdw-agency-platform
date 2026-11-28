@@ -30,6 +30,6 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     .join(", ");
   return json({
     ok: true,
-    note: `Feedback saved. Suggested weights (not applied): ${bits}. Save them on the requirement page if you agree.`,
+    note: `Feedback saved. Suggested weights (not applied): ${bits}. Outcome evidence: ${result.evidenceCount}. Save them on the requirement page if you agree.`,
   });
 }

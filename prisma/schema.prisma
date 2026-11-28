@@ -201,6 +201,7 @@ model Candidate {
   matches              Match[]
   consents             ConsentRecord[]
   drafts               MarketingDraft[]
+  placementOutcomes    PlacementOutcome[]
 
   @@index([status])
   @@index([email])
@@ -243,6 +244,7 @@ model Employer {
   shortlists             Shortlist[]
   interviews             InterviewRequest[]
   matches                Match[]
+  placementOutcomes      PlacementOutcome[]
 }
 
 model EmployerRequirement {
@@ -325,6 +327,7 @@ model Match {
   decidedAt         DateTime?
   createdAt         DateTime      @default(now())
   momCase           MomCase?
+  placementOutcomes PlacementOutcome[]
 
   @@unique([requirementId, candidateId])
   @@index([employerId])
@@ -344,16 +347,22 @@ model MomCase {
 }
 
 model Reminder {
-  id        String    @id @default(cuid())
-  momCaseId String
-  momCase   MomCase   @relation(fields: [momCaseId], references: [id], onDelete: Cascade)
-  code      String
-  title     String
-  dueHint   String
-  done      Boolean   @default(false)
-  doneAt    DateTime?
+  id           String              @id @default(cuid())
+  momCaseId    String
+  momCase      MomCase             @relation(fields: [momCaseId], references: [id], onDelete: Cascade)
+  code         String
+  kind         String              @default("")
+  title        String
+  dueHint      String
+  dueOn        DateTime?
+  done         Boolean             @default(false)
+  doneAt       DateTime?
+  approvedAt   DateTime?
+  approvedById String?
+  deliveries   ReminderDelivery[]
 
   @@index([momCaseId])
+  @@index([kind, dueOn])
 }
 
 model Document {
@@ -517,6 +526,80 @@ model InterviewFeedback {
   appliedAt        DateTime?
   createdById      String
   createdAt        DateTime         @default(now())
+}
+
+model ReminderTypeOptIn {
+  code        String   @id
+  enabled     Boolean  @default(false)
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
+model ReminderDelivery {
+  id            String    @id @default(cuid())
+  dedupeKey     String    @unique
+  reminderId    String?
+  reminder      Reminder? @relation(fields: [reminderId], references: [id], onDelete: Cascade)
+  kind          String
+  dueOn         String
+  recipientHash String
+  status        String
+  driver        String
+  createdAt     DateTime  @default(now())
+
+  @@index([kind, createdAt])
+}
+
+model EmailSuppression {
+  id        String   @id @default(cuid())
+  emailHash String   @unique
+  createdAt DateTime @default(now())
+}
+
+model PublicHolidayAdjustment {
+  id          String   @id @default(cuid())
+  date        String   @unique
+  name        String
+  suppressed  Boolean  @default(false)
+  note        String   @default("")
+  sourceUrl   String
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
+model MomRuleState {
+  key            String    @id
+  overrideJson   String?
+  sourceUrl      String    @default("")
+  note           String    @default("")
+  lastVerifiedAt DateTime?
+  verifiedById   String?
+  updatedAt      DateTime  @updatedAt
+}
+
+model PlacementOutcome {
+  id                   String    @id @default(cuid())
+  matchId              String?
+  match                Match?    @relation(fields: [matchId], references: [id], onDelete: SetNull)
+  candidateId          String
+  candidate            Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  employerId           String
+  employer             Employer  @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  startedOn            DateTime
+  endedOn              DateTime?
+  checkInMonth         Int?
+  durationDays         Int
+  completion           String
+  reasonCategory       String    @default("")
+  employerSatisfaction Int
+  helperSatisfaction   Int
+  notes                String    @default("")
+  recordedById         String
+  createdAt            DateTime  @default(now())
+
+  @@index([candidateId])
+  @@index([employerId])
+  @@index([matchId])
 }
 
 model AiUsageLog {

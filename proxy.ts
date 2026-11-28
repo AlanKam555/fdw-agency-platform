@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { clearSessionCookieOptions, csrfCookieOptions, SESSION_COOKIE } from "@/lib/auth/session";
 import { resolveRequestSession } from "@/lib/auth/sessions";
 import { contentSecurityPolicy } from "@/lib/security/csp";
+import { hstsValue } from "@/lib/security/hsts";
 import { CSRF_COOKIE } from "@/lib/security/csrf";
 import { logEvent } from "@/lib/log";
 import type { Role } from "@/lib/security/rbac";
@@ -11,6 +12,8 @@ const OPEN_WHEN_DISABLED = new Set(["/login", "/register", "/forbidden"]);
 
 function applyCsp(response: NextResponse, csp: string, csrf: { token: string; existing: boolean }) {
   response.headers.set("Content-Security-Policy", csp);
+  const hsts = hstsValue();
+  if (hsts) response.headers.set("Strict-Transport-Security", hsts);
   if (!csrf.existing) {
     response.cookies.set(CSRF_COOKIE, csrf.token, csrfCookieOptions());
   }

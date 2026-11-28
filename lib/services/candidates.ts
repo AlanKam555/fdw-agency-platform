@@ -5,10 +5,15 @@ import { encryptString } from "@/lib/crypto/field-encryption";
 import { toMatchable, toPublicCandidate } from "@/lib/candidates/dto";
 import { assertTransition, type PipelineStatus } from "@/lib/candidates/status";
 import { hashPassword } from "@/lib/security/passwords";
-import { PDPA_VERSION, type candidateApplicationSchema } from "@/lib/validation/schemas";
+import { issueEmailVerification } from "@/lib/security/email-verification";
+import {
+  PDPA_VERSION,
+  type candidateApplicationSchema,
+  type publicCandidateApplicationSchema,
+} from "@/lib/validation/schemas";
 import type { z } from "zod";
 
-type ApplicationInput = z.infer<typeof candidateApplicationSchema>;
+type ApplicationInput = z.infer<typeof candidateApplicationSchema> | z.infer<typeof publicCandidateApplicationSchema>;
 
 function optionalCipher(value: string | undefined): string | null {
   const trimmed = value?.trim();
@@ -26,6 +31,9 @@ export async function createCandidateApplication(
     const passwordHash = await hashPassword(input.password);
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
+      if (!existing.emailVerifiedAt && (existing.role === "EMPLOYER" || existing.role === "CANDIDATE")) {
+        await issueEmailVerification(existing.id, email);
+      }
       return {
         ok: false as const,
         code: "duplicate_email" as const,
@@ -40,6 +48,7 @@ export async function createCandidateApplication(
         passwordHash,
       },
     });
+    await issueEmailVerification(user.id, email);
     userId = user.id;
   }
 
@@ -59,7 +68,7 @@ export async function createCandidateApplication(
       salaryExpectationSgd: input.salaryExpectationSgd,
       availableFrom: input.availableFrom,
       householdExperience: input.householdExperience,
-      internalNotes: input.internalNotes ?? "",
+      internalNotes: "internalNotes" in input ? (input.internalNotes ?? "") : "",
       photoConsent: input.photoConsent,
       fictional: context.fictional ?? false,
       firstTimeInSingapore: input.firstTimeInSingapore,
@@ -67,7 +76,7 @@ export async function createCandidateApplication(
       pdpaConsentVersion: PDPA_VERSION,
       passportNumberEnc: optionalCipher(input.passportNumber),
       medicalNotesEnc: optionalCipher(input.medicalNotes),
-      medicalFitStatus: input.medicalFitStatus,
+      medicalFitStatus: "medicalFitStatus" in input ? input.medicalFitStatus : "PENDING",
       status: "APPLIED",
       consents: {
         create: [

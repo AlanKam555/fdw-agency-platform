@@ -167,10 +167,4 @@ export async function consumeRateLimit(
   return rateLimit(key, limit, windowMs, now);
 }
 
-export function clientIp(headers: Headers): string {
-  const forwarded = headers.get("x-forwarded-for");
-  if (forwarded) {
-    return forwarded.split(",")[0]?.trim() || "unknown";
-  }
-  return headers.get("x-real-ip") ?? "unknown";
-}
+export { clientIp } from "@/lib/security/client-ip";

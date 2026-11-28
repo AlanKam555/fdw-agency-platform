@@ -18,6 +18,7 @@ const STAFF = [
   ["/dashboard/marketing", "Marketing drafts"],
   ["/dashboard/campaigns", "Campaigns"],
   ["/dashboard/funnel", "Funnel"],
+  ["/dashboard/photos", "Photo review"],
   ["/dashboard/audit", "Audit log"],
 ];
 

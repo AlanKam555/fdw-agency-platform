@@ -94,6 +94,31 @@ export function UserActions({
       ) : (
         <p>No active sessions.</p>
       )}
+      <form
+        className="flex flex-wrap items-end gap-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const data = new FormData(event.currentTarget);
+          void send({
+            action: "reset_totp",
+            userId,
+            password: String(data.get("adminPassword") ?? ""),
+            code: String(data.get("code") ?? ""),
+          });
+        }}
+      >
+        <label className="label">
+          Your password
+          <input className="field" name="adminPassword" type="password" autoComplete="current-password" />
+        </label>
+        <label className="label">
+          Your authentication code
+          <input className="field" name="code" inputMode="numeric" autoComplete="one-time-code" />
+        </label>
+        <button className="button" type="submit">
+          Reset authenticator
+        </button>
+      </form>
       {error ? <p className="text-red-800">{error}</p> : null}
     </div>
   );

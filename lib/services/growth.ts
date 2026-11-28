@@ -1,4 +1,5 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
+import { derivedKey } from "@/lib/crypto/hkdf";
 import { prisma } from "@/lib/db";
 import { writeAudit } from "@/lib/audit";
 import { biasReport, outcomeBiasReport } from "@/lib/matching/fairness";
@@ -6,6 +7,10 @@ import { suggestFromEvidence } from "@/lib/matching/outcomes";
 import { coerceWeights, weightsAreValid, type ScoreWeights } from "@/lib/matching/weights";
 
 function tokenHash(token: string): string {
+  return createHmac("sha256", derivedKey("unsubscribe")).update(token).digest("hex");
+}
+
+function legacyTokenHash(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
@@ -286,7 +291,9 @@ export async function requestTestimonial(input: { authorId: string; employerEmai
 }
 
 export async function submitTestimonial(input: { token: string; quote: string; authorName: string }) {
-  const row = await prisma.testimonialRequest.findUnique({ where: { tokenHash: tokenHash(input.token) } });
+  const row = await prisma.testimonialRequest.findFirst({
+    where: { tokenHash: { in: [tokenHash(input.token), legacyTokenHash(input.token)] } },
+  });
   if (!row || row.status === "APPROVED" || row.status === "DECLINED") return { ok: false as const, error: "This link is not open." };
   await prisma.testimonialRequest.update({
     where: { id: row.id },

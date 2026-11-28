@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { writeAudit } from "@/lib/audit";
 import { guardRequest, json } from "@/lib/http/api";
 import { hasPermission } from "@/lib/security/rbac";
+import { clientIp } from "@/lib/security/client-ip";
 import { signDocumentAccess, verifyDocumentAccess } from "@/lib/storage/signed-url";
 import {
   attachmentFileName,
@@ -26,7 +27,6 @@ export async function GET(
 ) {
   const { id } = await context.params;
   const token = req.nextUrl.searchParams.get("token");
-  const signed = verifyDocumentAccess(token);
   const issue = req.nextUrl.searchParams.get("issue") === "1";
 
   if (issue) {
@@ -43,13 +43,17 @@ export async function GET(
     return json({ url });
   }
 
-  let actorId: string | null = signed?.sub ?? null;
-  if (!signed || signed.id !== id) {
+  let actorId: string | null = null;
+  if (token) {
+    const signed = verifyDocumentAccess(token);
+    if (!signed || signed.id !== id || !signed.sub || !(await signerStillAllowed(signed.sub))) {
+      return json({ error: "A valid signed link is required." }, 401);
+    }
+    actorId = signed.sub;
+  } else {
     const guard = await guardRequest(req, {}, { permission: "documents:staff", csrf: false });
     if (!guard.ok) return json({ error: "A valid signed link is required." }, 401);
     actorId = guard.session!.sub;
-  } else if (signed.sub && !(await signerStillAllowed(signed.sub))) {
-    return json({ error: "A valid signed link is required." }, 401);
   }
 
   const document = await prisma.document.findUnique({ where: { id } });
@@ -59,7 +63,7 @@ export async function GET(
     action: "document.download",
     entityType: "Document",
     entityId: document.id,
-    ip: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+    ip: clientIp(req),
   });
 
   const presigned = await presignObject(document.storageKey, 300, {

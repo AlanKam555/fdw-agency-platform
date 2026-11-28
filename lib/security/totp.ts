@@ -1,8 +1,10 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 import { generateSecret, generateSync, generateURI, verifySync } from "otplib";
 import { prisma } from "@/lib/db";
 import { writeAudit } from "@/lib/audit";
 import { decryptString, encryptString, secretsEqual } from "@/lib/crypto/field-encryption";
+import { recoveryMacKey } from "@/lib/crypto/keyring";
+import { verifyPassword } from "@/lib/security/passwords";
 import { logEvent } from "@/lib/log";
 import { consumeRateLimit } from "@/lib/security/rate-limit";
 import type { Role } from "@/lib/security/rbac";
@@ -27,12 +29,8 @@ function totpKey(): Buffer {
   return key;
 }
 
-function pepper(): string {
-  const value = process.env.AUTH_SECRET;
-  if (!value || value.length < 16) {
-    throw new Error("AUTH_SECRET must be set to a string of at least 16 characters");
-  }
-  return value;
+export function mfaAttemptKey(userId: string, ip?: string | null): string {
+  return `mfa:${userId}:${(ip || "unknown").slice(0, 80)}`;
 }
 
 export function graceDaysFromEnv(): number {
@@ -104,14 +102,25 @@ export function normalizeRecoveryCode(code: string): string {
 }
 
 export function hashRecoveryCode(code: string): string {
-  return createHmac("sha256", pepper()).update(normalizeRecoveryCode(code)).digest("hex");
+  const { id, key } = recoveryMacKey();
+  const mac = createHmac("sha256", key).update(normalizeRecoveryCode(code)).digest("hex");
+  return `rk2.${id}.${mac}`;
 }
 
 export function recoveryMatches(code: string, hash: string): boolean {
-  const left = Buffer.from(hashRecoveryCode(code));
-  const right = Buffer.from(hash);
-  if (left.length !== right.length) return false;
-  return timingSafeEqual(left, right);
+  const normalized = normalizeRecoveryCode(code);
+  if (hash.startsWith("rk2.")) {
+    const [, keyId, mac] = hash.split(".");
+    if (!keyId || !mac) return false;
+    try {
+      const expected = createHmac("sha256", recoveryMacKey(keyId).key).update(normalized).digest("hex");
+      return secretsEqual(expected, mac);
+    } catch {
+      return false;
+    }
+  }
+  const secrets = [process.env.AUTH_SECRET, process.env.AUTH_SECRET_PREVIOUS].filter((value): value is string => Boolean(value));
+  return secrets.some((secret) => secretsEqual(createHmac("sha256", secret).update(normalized).digest("hex"), hash));
 }
 
 export function generateRecoveryCodes(count = 8): string[] {
@@ -167,7 +176,7 @@ export async function confirmTotpSetup(input: {
   | { ok: true; recoveryCodes: string[] }
   | { ok: false; error: string; status: number; retryAfterSeconds?: number }
 > {
-  const gate = await limited(`mfa:${input.userId}`);
+  const gate = await limited(mfaAttemptKey(input.userId, input.ip));
   if (!gate.ok) {
     return {
       ok: false,
@@ -224,7 +233,7 @@ export async function consumeTotpCode(input: {
   code: string;
   ip?: string | null;
 }): Promise<{ ok: true } | { ok: false; retryAfterSeconds?: number; reason: "invalid" | "replay" | "limited" }> {
-  const gate = await limited(`mfa:${input.userId}`);
+  const gate = await limited(mfaAttemptKey(input.userId, input.ip));
   if (!gate.ok) {
     await writeAudit({
       actorId: input.userId,
@@ -274,18 +283,16 @@ export async function consumeRecoveryCode(input: {
   code: string;
   ip?: string | null;
 }): Promise<{ ok: true } | { ok: false; retryAfterSeconds?: number }> {
-  const gate = await limited(`mfa:${input.userId}`);
+  const gate = await limited(mfaAttemptKey(input.userId, input.ip));
   if (!gate.ok) return { ok: false, retryAfterSeconds: gate.retryAfterSeconds };
-  const hash = hashRecoveryCode(input.code);
   const rows = await prisma.recoveryCode.findMany({
     where: { userId: input.userId, usedAt: null },
     select: { id: true, codeHash: true },
   });
   let matchId: string | null = null;
-  const dummy = hashRecoveryCode("placeholder");
-  if (rows.length === 0) secretsEqual(dummy, hash);
+  if (rows.length === 0) recoveryMatches("placeholder", hashRecoveryCode("placeholder"));
   for (const row of rows) {
-    if (secretsEqual(row.codeHash, hash)) matchId = row.id;
+    if (recoveryMatches(input.code, row.codeHash)) matchId = row.id;
   }
   if (!matchId) {
     await writeAudit({
@@ -330,6 +337,50 @@ export async function replaceRecoveryCodes(userId: string, ip?: string | null): 
     ip,
   });
   return codes;
+}
+
+export async function resetStaffTotp(input: {
+  actorId: string;
+  userId: string;
+  password: string;
+  code: string;
+  ip: string;
+}): Promise<{ ok: true } | { ok: false; error: string; status: number }> {
+  if (input.actorId === input.userId) return { ok: false, error: "Re-authentication failed.", status: 400 };
+  const [actor, target] = await Promise.all([
+    prisma.user.findUnique({ where: { id: input.actorId } }),
+    prisma.user.findUnique({ where: { id: input.userId } }),
+  ]);
+  if (!actor || !target || (target.role !== "ADMIN" && target.role !== "STAFF")) {
+    return { ok: false, error: "Re-authentication failed.", status: 401 };
+  }
+  const passwordOk = await verifyPassword(input.password, actor.passwordHash);
+  const codeOk = passwordOk ? await consumeTotpCode({ userId: actor.id, code: input.code, ip: input.ip }) : { ok: false as const };
+  if (!passwordOk || !codeOk.ok) return { ok: false, error: "Re-authentication failed.", status: 401 };
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: target.id },
+      data: {
+        totpSecretEnc: null,
+        totpPendingSecretEnc: null,
+        totpEnabledAt: null,
+        totpLastStep: null,
+        totpSetupDueAt: new Date(),
+      },
+    }),
+    prisma.recoveryCode.deleteMany({ where: { userId: target.id } }),
+  ]);
+  const { revokeAllSessions } = await import("@/lib/auth/sessions");
+  await revokeAllSessions({ userId: target.id, reason: "mfa_reset", actorId: actor.id, ip: input.ip });
+  await writeAudit({
+    actorId: actor.id,
+    action: "auth.mfa_admin_reset",
+    entityType: "User",
+    entityId: target.id,
+    ip: input.ip,
+  });
+  logEvent("info", "auth.mfa_admin_reset", { actorId: actor.id, userId: target.id });
+  return { ok: true };
 }
 
 export async function clearTotp(userId: string, ip?: string | null): Promise<void> {

@@ -24,6 +24,7 @@ export const PRIVACY_POLICY = {
     enquiryDays: 365,
     auditLogDays: 365 * 2,
     rejectedApplicationDays: 180,
+    unverifiedAccountDays: 14,
   },
   rights: [
     "Access and correction of personal data we hold",
@@ -34,5 +35,5 @@ export const PRIVACY_POLICY = {
 
 export function retentionSummary(): string {
   const r = PRIVACY_POLICY.retention;
-  return `Enquiries are kept for about ${r.enquiryDays} days, rejected applications for about ${r.rejectedApplicationDays} days, active files for about ${r.activeApplicationDays} days, deployed files for about ${r.deployedRecordDays} days, and staff audit logs for about ${r.auditLogDays} days. These are policy defaults for this product, not legal advice.`;
+  return `Enquiries are kept for about ${r.enquiryDays} days, rejected applications for about ${r.rejectedApplicationDays} days, active files for about ${r.activeApplicationDays} days, deployed files for about ${r.deployedRecordDays} days, and staff audit logs for about ${r.auditLogDays} days. Employer and helper accounts that never confirm their email are removed after about ${r.unverifiedAccountDays} days. These are policy defaults for this product, not legal advice.`;
 }

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { ConsentBox, LanguageChecks, SkillChecks } from "@/components/fields";
+import { CaptchaField } from "@/components/captcha-field";
+import { Honeypot } from "@/components/honeypot";
 import { JsonForm } from "@/components/json-form";
 import { momRules } from "@/config/mom-rules";
 import { AGENCY } from "@/content/site";
@@ -18,6 +20,8 @@ export default function ApplyPage() {
       </p>
       <div className="card mt-6 p-6">
         <JsonForm action="/api/applications" submitLabel="Submit application" refresh={false}>
+          <Honeypot />
+          <CaptchaField />
           <label className="label">Full name<input className="field" name="fullName" required /></label>
           <label className="label">Email<input className="field" name="email" type="email" required /></label>
           <label className="label">Phone<input className="field" name="phone" required minLength={8} /></label>

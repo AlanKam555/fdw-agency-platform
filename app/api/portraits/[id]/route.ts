@@ -26,7 +26,13 @@ export async function GET(
   }
   const candidate = await prisma.candidate.findUnique({
     where: { id },
-    include: { documents: { where: { kind: "PHOTO" }, orderBy: { createdAt: "desc" }, take: 1 } },
+    include: {
+      documents: {
+        where: { kind: "PHOTO", reviewedAt: { not: null }, rejectedAt: null, approvedById: { not: null } },
+        orderBy: { reviewedAt: "desc" },
+        take: 1,
+      },
+    },
   });
   const photo = candidate?.documents[0];
   if (!candidate || !photo || !candidate.photoConsent || candidate.redactedAt) {

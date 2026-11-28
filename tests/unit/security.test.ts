@@ -6,15 +6,17 @@ import { rateLimit, resetRateLimits } from "@/lib/security/rate-limit";
 import { hasPermission } from "@/lib/security/rbac";
 import { canTransition } from "@/lib/candidates/status";
 import { toPublicCandidate } from "@/lib/candidates/dto";
-import { candidateApplicationSchema } from "@/lib/validation/schemas";
+import { candidateApplicationSchema, publicCandidateApplicationSchema } from "@/lib/validation/schemas";
 import type { Candidate } from "@prisma/client";
 
 describe("security primitives", () => {
   it("round-trips and rejects tampered ciphertext", () => {
     const encoded = encryptString("P0001111");
     expect(decryptString(encoded)).toBe("P0001111");
-    const [version, iv, tag, body] = encoded.split(":");
-    expect(() => decryptString([version, iv, tag, `${body}x`].join(":"))).toThrow();
+    const [version, keyId, iv, tag, body] = encoded.split(":");
+    expect(version).toBe("v2");
+    expect(keyId).toBeTruthy();
+    expect(() => decryptString([version, keyId, iv, tag, `${body}x`].join(":"))).toThrow();
     const bytes = encryptBytes(Buffer.from("pdf"));
     expect(decryptBytes(bytes).toString()).toBe("pdf");
   });
@@ -73,6 +75,9 @@ describe("security primitives", () => {
     expect(candidateApplicationSchema.safeParse(base).success).toBe(true);
     expect(candidateApplicationSchema.safeParse({ ...base, pdpaConsent: false }).success).toBe(false);
     expect(candidateApplicationSchema.safeParse({ ...base, religion: "none" }).success).toBe(false);
+    expect(publicCandidateApplicationSchema.safeParse(base).success).toBe(true);
+    expect(publicCandidateApplicationSchema.safeParse({ ...base, internalNotes: "staff only" }).success).toBe(false);
+    expect(publicCandidateApplicationSchema.safeParse({ ...base, medicalFitStatus: "FIT" }).success).toBe(false);
   });
 
   it("allows only adjacent pipeline moves", () => {

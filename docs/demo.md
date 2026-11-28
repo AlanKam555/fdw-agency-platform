@@ -14,12 +14,20 @@ Local:
 
 ```bash
 cp .env.example .env
+npm run secrets:generate
+```
+
+Paste the printed values into `.env`, then:
+
+```bash
 npm install
 npm run demo
 npm run dev
 ```
 
 Open http://localhost:3000. Password for every seeded account: `Harbourlight-Dev-1`.
+
+Docker writes random secrets into a volume and loads them only when `NODE_ENV` is not `production`. A new registration with the console email driver appends the confirmation link to `private/dev-outbox.jsonl` inside the app container (`docker compose exec app cat private/dev-outbox.jsonl`). Seeded accounts are already confirmed. Public portraits appear only after a staff member approves them under Photo review. The seed does not include portrait files.
 
 Staff and admin are not given a TOTP secret in the seed. The first sign-in starts a seven-day grace period and sends you to Security. Add the authenticator secret shown there to an app, confirm a code, and store the recovery codes. The desk keeps working until the grace period ends. Employer and helper accounts can skip that step.
 

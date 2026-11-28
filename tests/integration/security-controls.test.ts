@@ -16,7 +16,9 @@ const staffEmail = `sec-staff-${stamp}@harbourlight.example`;
 const password = "Harbourlight-Dev-1";
 
 async function cleanup() {
-  await prisma.user.deleteMany({ where: { email: { in: [adminEmail, staffEmail] } } });
+  await prisma.user.deleteMany({
+    where: { email: { in: [adminEmail, staffEmail, `sec-fast-${stamp}@harbourlight.example`] } },
+  });
 }
 
 function cookieHeader(token: string, csrf: string) {
@@ -108,16 +110,18 @@ describe("sign-in protection", () => {
       },
     });
 
-    async function attempt(body: Record<string, string>) {
+    async function attempt(body: Record<string, string>, ip?: string) {
+      const headers: Record<string, string> = {
+        "content-type": "application/json",
+        origin: "http://localhost:3000",
+        cookie: "hl_csrf=csrf-token-value-32-characters",
+        "x-csrf-token": "csrf-token-value-32-characters",
+      };
+      if (ip) headers["x-forwarded-for"] = ip;
       return login(
         new NextRequest("http://localhost:3000/api/auth/login", {
           method: "POST",
-          headers: {
-            "content-type": "application/json",
-            origin: "http://localhost:3000",
-            cookie: "hl_csrf=csrf-token-value-32-characters",
-            "x-csrf-token": "csrf-token-value-32-characters",
-          },
+          headers,
           body: JSON.stringify({ csrf: "csrf-token-value-32-characters", ...body }),
         }),
       );
@@ -134,6 +138,30 @@ describe("sign-in protection", () => {
     const stillBody = await still.json();
     expect(still.status).toBe(401);
     expect(stillBody.error).toBe("Invalid email or password.");
+
+    delete process.env.LOCKOUT_DELAY_CAP_MS;
+    const fastEmail = `sec-fast-${stamp}@harbourlight.example`;
+    await prisma.user.create({
+      data: {
+        email: fastEmail,
+        name: "Fast Lock",
+        role: "EMPLOYER",
+        passwordHash: await hashPassword(password),
+        emailVerifiedAt: new Date(),
+      },
+    });
+    const started = Date.now();
+    const fastIp = "203.0.113.44";
+    let fast = await attempt({ email: fastEmail, password: "wrong-password" }, fastIp);
+    for (let i = 0; i < 4; i += 1) {
+      fast = await attempt({ email: fastEmail, password: "wrong-password" }, fastIp);
+    }
+    expect(fast.status).toBe(401);
+    fast = await attempt({ email: fastEmail, password: "wrong-password" }, fastIp);
+    expect(fast.status).toBe(429);
+    expect(fast.headers.get("retry-after")).toBeTruthy();
+    expect(Date.now() - started).toBeLessThan(1500);
+    process.env.LOCKOUT_DELAY_CAP_MS = "0";
     const lock = await prisma.auditLog.findFirst({
       where: { action: "auth.lockout" },
       orderBy: { createdAt: "desc" },
@@ -253,6 +281,13 @@ describe("document downloads", () => {
       where: { action: "document.download", entityId: document.id },
     });
     expect(audit?.actorId).toBe(admin!.id);
+    const spoiled = await download(
+      new NextRequest(`http://localhost:3000/api/documents/${document.id}?token=not-a-token`, {
+        headers: { cookie: cookieHeader(issued.token, csrf) },
+      }),
+      { params: Promise.resolve({ id: document.id }) },
+    );
+    expect(spoiled.status).toBe(401);
     setBlobStoreForTests(null);
   });
 });

@@ -5,7 +5,7 @@ import { GET as reminders } from "@/app/api/cron/reminders/route";
 describe("reminder cron", () => {
   it("rejects a missing or wrong bearer secret", async () => {
     const previous = process.env.CRON_SECRET;
-    process.env.CRON_SECRET = "test-cron-secret";
+    process.env.CRON_SECRET = "test-cron-secret-not-for-production-32";
     const missing = await reminders(new NextRequest("http://localhost:3000/api/cron/reminders"));
     const wrong = await reminders(
       new NextRequest("http://localhost:3000/api/cron/reminders", {
@@ -22,11 +22,11 @@ describe("reminder cron", () => {
     const previousSend = process.env.REMINDERS_SEND;
     const previousCron = process.env.CRON_SECRET;
     delete process.env.REMINDERS_SEND;
-    process.env.CRON_SECRET = "test-cron-secret";
+    process.env.CRON_SECRET = "test-cron-secret-not-for-production-32";
     const request = () =>
       reminders(
         new NextRequest("http://localhost:3000/api/cron/reminders", {
-          headers: { authorization: "Bearer test-cron-secret" },
+          headers: { authorization: "Bearer test-cron-secret-not-for-production-32" },
         }),
       );
     const first = await request();

@@ -5,6 +5,7 @@ import { hashPassword } from "@/lib/security/passwords";
 import { guardRequest, json, parseBody, zodMessage } from "@/lib/http/api";
 import { staffUserSchema, staffActionSchema } from "@/lib/validation/schemas";
 import { disableUserAccount, resetUserPassword } from "@/lib/services/accounts";
+import { resetStaffTotp } from "@/lib/security/totp";
 import { revokeAllSessions, revokeSessionById } from "@/lib/auth/sessions";
 import { clearSessionCookieOptions, SESSION_COOKIE } from "@/lib/auth/session";
 
@@ -23,6 +24,7 @@ export async function POST(req: NextRequest) {
       name: parsed.data.name,
       role: parsed.data.role,
       passwordHash: await hashPassword(parsed.data.password),
+      emailVerifiedAt: new Date(),
     },
   });
   await writeAudit({
@@ -62,6 +64,18 @@ export async function PATCH(req: NextRequest) {
       response.cookies.set(SESSION_COOKIE, "", clearSessionCookieOptions());
     }
     return response;
+  }
+
+  if (parsed.data.action === "reset_totp") {
+    const result = await resetStaffTotp({
+      actorId,
+      userId: parsed.data.userId,
+      password: parsed.data.password,
+      code: parsed.data.code,
+      ip: guard.ip,
+    });
+    if (!result.ok) return json({ error: result.error }, result.status);
+    return json({ ok: true });
   }
 
   if (parsed.data.action === "set_password") {

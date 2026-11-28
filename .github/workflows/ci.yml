@@ -34,12 +34,13 @@ jobs:
       STORAGE_DRIVER: local
       STORAGE_LOCAL_DIR: private
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: node scripts/audit-prod.mjs
       - run: npx prisma migrate deploy
       - run: npm run lint
       - run: npm run typecheck
@@ -64,8 +65,6 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/harbourlight_test
-      AUTH_SECRET: ci-auth-secret-not-for-production-use-32
-      FIELD_ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
       APP_URL: http://127.0.0.1:3000
       BCRYPT_COST: "4"
       STORAGE_DRIVER: s3
@@ -76,19 +75,20 @@ jobs:
       S3_SECRET_ACCESS_KEY: minio-dev-not-for-production
       S3_SSE: AES256
       S3_FORCE_PATH_STYLE: "true"
-      CRON_SECRET: ci-cron-secret-not-for-production
       EMAIL_DRIVER: console
       CI: "true"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Production-like secrets for next start
+        run: node scripts/secrets-generate.mjs >> "$GITHUB_ENV"
       - name: Start MinIO
         run: |
-          docker run -d --name minio -p 9000:9000 \
+          docker run -d --name minio -p 127.0.0.1:9000:9000 \
             -e MINIO_ROOT_USER=minio \
             -e MINIO_ROOT_PASSWORD=minio-dev-not-for-production \
             cgr.dev/chainguard/minio@sha256:b9b1cce81a4a6cc9bf250e68d621cc0b9fb8ed15aefe18fcd1840525eab6a81a \
@@ -105,7 +105,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run build
       - run: npm run test:e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: failure()
         with:
           name: playwright-report
@@ -113,3 +113,31 @@ jobs:
             playwright-report
             test-results
           if-no-files-found: ignore
+
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build image
+        run: docker build -t fdw-agency-platform:ci .
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: fdw-agency-platform:ci
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+      - uses: anchore/sbom-action@dfcb83b97731532d72be422cbc51ee64adb6fd56 # v0.24.4
+        with:
+          image: fdw-agency-platform:ci
+          format: cyclonedx-json
+          output-file: sbom.cdx.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sbom
+          path: sbom.cdx.json

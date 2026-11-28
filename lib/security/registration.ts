@@ -1,5 +1,5 @@
 export const REGISTRATION_NOTE =
-  "If this email is available, the account is ready. Sign in to continue.";
+  "If this email is available, the account is ready. Confirm the email, then sign in to continue.";
 
 export const APPLICATION_RECEIVED_NOTE =
   "If this email is new, the application is saved. If you already have an account, sign in to continue.";

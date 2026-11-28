@@ -1,6 +1,6 @@
 {
   "name": "fdw-agency-platform",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "license": "MIT",
   "description": "Open-source workspace for a Singapore foreign domestic worker employment agency. Harbourlight is the fictional demo.",
@@ -16,10 +16,17 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "migrate": "prisma migrate deploy",
+    "secrets:generate": "node scripts/secrets-generate.mjs",
+    "secrets:reencrypt": "tsx scripts/reencrypt-fields.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
+  },
+  "overrides": {
+    "undici": "6.29.1",
+    "@fastify/busboy": "3.2.2"
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "^3.0.148",
@@ -40,7 +47,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "redis": "^5.8.2",
-    "zod": "^3.25.76"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",

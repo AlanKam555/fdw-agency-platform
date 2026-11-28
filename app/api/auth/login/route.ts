@@ -14,7 +14,6 @@ import {
   gateSignIn,
   INVALID_LOGIN_MESSAGE,
   noteSignInFailure,
-  sleepForLockout,
 } from "@/lib/security/lockout";
 import { consumeRecoveryCode, consumeTotpCode, graceDaysFromEnv } from "@/lib/security/totp";
 
@@ -39,7 +38,20 @@ export async function POST(req: NextRequest) {
     });
     return json({ error: INVALID_LOGIN_MESSAGE }, 401, { "Retry-After": String(gate.retryAfterSeconds) });
   }
-  await sleepForLockout(gate.delayMs);
+  if (gate.delayMs > 0) {
+    const failed = await noteSignInFailure(email, guard.ip);
+    if (failed.justLocked) {
+      await writeAudit({
+        action: "auth.lockout",
+        entityType: "User",
+        entityId: "locked",
+        metadata: { scope: failed.scope, failures: failed.count },
+        ip: guard.ip,
+      });
+    }
+    const retryAfter = failed.locked ? failed.retryAfterSeconds : Math.max(1, Math.ceil(gate.delayMs / 1000));
+    return json({ error: INVALID_LOGIN_MESSAGE }, failed.locked ? 401 : 429, { "Retry-After": String(retryAfter) });
+  }
 
   const user = await authenticate(email, parsed.data.password, guard.ip);
   if (!user) {

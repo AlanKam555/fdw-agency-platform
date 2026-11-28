@@ -84,7 +84,7 @@ npm test
 npm run build
 ```
 
-Tests expect `DATABASE_URL`, `AUTH_SECRET`, and `FIELD_ENCRYPTION_KEY`. GitHub Actions starts PostgreSQL and runs lint, typecheck, tests, and the production build. A second job runs `npm run test:e2e` against that build, Postgres, and MinIO, and uploads the Playwright report if the job fails. CodeQL and gitleaks run as separate workflows. The CI permission is `contents: read`.
+Tests expect `DATABASE_URL`, `AUTH_SECRET`, and `FIELD_ENCRYPTION_KEY`. GitHub Actions starts PostgreSQL and runs `npm audit --omit=dev --audit-level=high`, lint, typecheck, tests, and the production build. A second job generates fresh secrets, then runs `npm run test:e2e` against that build, Postgres, and MinIO, and uploads the Playwright report if the job fails. A third job builds the image, scans it with Trivy, and uploads a CycloneDX SBOM. CodeQL and gitleaks run as separate workflows. The CI permission is `contents: read`.
 
 `npm run test:e2e` starts the production server. Set `CRON_SECRET`, point storage at a private bucket, and seed the Harbourlight demo first. The demo accounts are not pre-enrolled in TOTP.
 
@@ -93,7 +93,7 @@ Tests expect `DATABASE_URL`, `AUTH_SECRET`, and `FIELD_ENCRYPTION_KEY`. GitHub A
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/AlanKam555/fdw-agency-platform&env=DATABASE_URL,AUTH_SECRET,FIELD_ENCRYPTION_KEY,APP_URL,CRON_SECRET&project-name=fdw-agency-platform&repository-name=fdw-agency-platform)
 
 1. Create a Vercel project from this repository and a managed Postgres database (Neon, Supabase, or Vercel Postgres).
-2. Set the environment variables from `.env.example`. Use a new `AUTH_SECRET`, a new `FIELD_ENCRYPTION_KEY`, and `BCRYPT_COST=12`. Leave every AI key empty until you choose a provider.
+2. Set the environment variables from `.env.example`. Run `npm run secrets:generate` and set `AUTH_SECRET`, `FIELD_ENCRYPTION_KEY`, `CRON_SECRET`, and `TOTP_ENCRYPTION_KEY`. Use `BCRYPT_COST=12`. Leave every AI key empty until you choose a provider. Run `npx prisma migrate deploy` before the new app, not inside the request process.
 3. Set `APP_URL` to the production https origin. CSRF checks compare the request origin with `APP_URL` and with the host the browser requested. Session and CSRF cookies are marked `Secure` when `APP_URL` starts with `https://`. An `http://localhost` value keeps the local demo able to sign in.
 4. Set `STORAGE_DRIVER=s3` and a private bucket (`S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`). Optional: `S3_ENDPOINT` and `S3_FORCE_PATH_STYLE` for R2 or MinIO, `S3_SSE=AES256` or `S3_SSE=aws:kms` with `S3_KMS_KEY_ID`. The app refuses to start in production when the driver is local, unless `ALLOW_LOCAL_STORAGE=true`.
 5. For more than one instance, set `RATE_LIMIT_DRIVER=upstash` (or `redis`) and the matching URL and token. Sign-in lockout uses that same store. The defaults stay in memory. `MFA_GRACE_DAYS` defaults to 7. `TOTP_ENCRYPTION_KEY` is optional and otherwise uses `FIELD_ENCRYPTION_KEY`.
@@ -109,9 +109,11 @@ The app binds to `0.0.0.0` and the platform port. No background worker is requir
 | Variable | Purpose |
 | --- | --- |
 | `DATABASE_URL` | Postgres connection string |
-| `AUTH_SECRET` | Signs session cookies and recovery-code hashes |
-| `FIELD_ENCRYPTION_KEY` | 32-byte base64 AES-256-GCM key for field encryption and, by default, TOTP secrets |
-| `TOTP_ENCRYPTION_KEY` | Optional separate 32-byte base64 key for TOTP secrets |
+| `AUTH_SECRET` | Root secret. Purpose keys are derived with HKDF. Production requires 32 bytes and rejects published defaults |
+| `FIELD_ENCRYPTION_KEY` | 32-byte base64 AES-256-GCM key. Blank in `.env.example`. Production rejects the old published value |
+| `FIELD_ENCRYPTION_KEYS` | Optional keyring, `id:base64` entries separated by commas |
+| `FIELD_ENCRYPTION_KEY_ID` | Active key id. Defaults to `v1` when only `FIELD_ENCRYPTION_KEY` is set |
+| `TOTP_ENCRYPTION_KEY` | Required in production. 32-byte base64, distinct from the field keys |
 | `APP_URL` | Public origin. `https` marks cookies `Secure` |
 | `BCRYPT_COST` | Password hashing cost. Use 12 outside tests |
 | `MFA_GRACE_DAYS` | Days before staff and admin must finish TOTP. Default 7 |
@@ -122,7 +124,11 @@ The app binds to `0.0.0.0` and the platform port. No background worker is requir
 | `S3_ENDPOINT`, `S3_FORCE_PATH_STYLE` | Custom endpoint. Path-style defaults on when an endpoint is set |
 | `S3_SSE`, `S3_KMS_KEY_ID` | `AES256` or `aws:kms`. KMS needs the key id |
 | `RATE_LIMIT_DRIVER` | `memory`, `upstash`, or `redis`. Lockout uses this store |
-| `CRON_SECRET` | Bearer token for cron routes. Compared with `timingSafeEqual` |
+| `CRON_SECRET` | Bearer token for cron routes. At least 32 bytes in production |
+| `TRUSTED_PROXY_HOPS` | How many X-Forwarded-For hops to trust. Default 0 uses the rightmost address |
+| `CLIENT_IP_HEADER` | Optional platform IP header. Used only when that header is present |
+| `EMAIL_VERIFY_HOURS` | Confirmation link lifetime. Default 24 |
+| `BOT_PROTECTION` | `off`, `turnstile`, or `hcaptcha`. Off does not block forms |
 | `EMAIL_DRIVER` | `console` (default), `smtp`, `resend`, or `ses` |
 | `EMAIL_FROM` | From address for SMTP, and the fallback for Resend and SES |
 | `REMINDERS_SEND` | `true` sends. Anything else is a dry run |

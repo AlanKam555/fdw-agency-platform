@@ -1,4 +1,5 @@
 import { createHash, createHmac, randomBytes } from "node:crypto";
+import { derivedKey } from "@/lib/crypto/hkdf";
 import type { Role } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { logEvent } from "@/lib/log";
@@ -27,20 +28,12 @@ export type SessionResolution =
   | { kind: "disabled"; userId: string }
   | { kind: "active"; payload: SessionPayload; user: SessionUser };
 
-function authSecret(): string {
-  const value = process.env.AUTH_SECRET;
-  if (!value || value.length < 16) {
-    throw new Error("AUTH_SECRET must be set to a string of at least 16 characters");
-  }
-  return value;
-}
-
 export function hashSessionId(sid: string): string {
   return createHash("sha256").update(sid).digest("hex");
 }
 
 function clientHash(value: string): string {
-  return createHmac("sha256", authSecret()).update(value.slice(0, 200)).digest("hex").slice(0, 32);
+  return createHmac("sha256", derivedKey("client-hash")).update(value.slice(0, 200)).digest("hex").slice(0, 32);
 }
 
 const userSelect = {

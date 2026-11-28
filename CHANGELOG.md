@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.0 — 2026-11-28
+
+### Security
+
+- Production refuses to boot when `AUTH_SECRET`, `CRON_SECRET`, or a field encryption key is missing, shorter than 32 bytes, or one of the published example values. `TOTP_ENCRYPTION_KEY` is required in production and must differ from the field keys. `npm run secrets:generate` prints a fresh set. Docker Compose no longer interpolates those published defaults. A dev-only init container writes random secrets, and the app loads them only when `NODE_ENV` is not production.
+- Client IP comes from one helper. With `TRUSTED_PROXY_HOPS` at 0 it uses the rightmost `X-Forwarded-For` address. Set `CLIENT_IP_HEADER` when the platform puts the client address in its own header.
+- The public helper application no longer accepts staff fields (`internalNotes`, `medicalFitStatus`). New employer and helper accounts stay unsigned-in until they open a single-use email link. The acknowledgement is the same for a new address and an existing one. Unconfirmed accounts older than 14 days are removed by the retention job. Public forms include a honeypot. Turnstile or hCaptcha runs only when `BOT_PROTECTION` names that provider.
+- Public portraits are served only after a staff member approves them. Uploads are rejected from `Content-Length` before the body is buffered, and each helper has a cap per file and per kind.
+- Session cookies, document links, unsubscribe links, reminder recipient hashes, and email confirmation tokens use HKDF purpose keys. Field ciphertext records a key id so a keyring can decrypt older rows. `npm run secrets:reencrypt` rewrites stored values to the active key. Recovery codes issued after this release stay valid when `AUTH_SECRET` rotates. They are tied to the field key id in the hash.
+- GitHub Actions are pinned to commit SHAs. The gitleaks download is checked against a checksum. CI runs `npm audit --omit=dev --audit-level=high`, a Trivy image scan, and a CycloneDX SBOM. The app image is multi-stage, runs as `node`, upgrades Debian security packages at build, omits the npm CLI and the Prisma CLI, and does not migrate on start. `Strict-Transport-Security` is set when `APP_URL` is `https`. MinIO is published on `127.0.0.1` only.
+- An administrator can reset another staff member's authenticator after entering their own password and current code. That revokes the target's sessions and requires enrolment again. Sign-in no longer sleeps inside the request: after five failures the next attempt is `429` with `Retry-After`. Authenticator guesses are counted per user and IP.
+
+### Changed
+
+- Zod is `^4.6.6`.
+- Existing session cookies stop working, because the session MAC key changed. Outstanding document links expire within five minutes. Pre-release recovery codes still match until `AUTH_SECRET` itself changes. New confirmation links are required before a newly registered employer or helper can sign in. Photos already in storage stay off the public gallery until staff approve them.
+
 ## 0.4.0 — 2026-11-26
 
 ### Added

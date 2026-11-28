@@ -1,4 +1,5 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
+import { derivedKey } from "@/lib/crypto/hkdf";
 import { prisma } from "@/lib/db";
 import { writeAudit } from "@/lib/audit";
 import { createEmailDriver, emailDriverName, unsubscribeUrl } from "@/lib/email/driver";
@@ -40,12 +41,16 @@ export type DispatchSummary = {
   duplicates: number;
 };
 
-function pepper(): string {
-  return process.env.AUTH_SECRET || "reminder";
+export function recipientHash(email: string): string {
+  return createHmac("sha256", derivedKey("reminder-hash")).update(email.trim().toLowerCase()).digest("hex");
 }
 
-export function recipientHash(email: string): string {
-  return createHash("sha256").update(`${pepper()}\n${email.trim().toLowerCase()}`).digest("hex");
+export function legacyRecipientHashes(email: string): string[] {
+  const normalized = email.trim().toLowerCase();
+  const secrets = [process.env.AUTH_SECRET, process.env.AUTH_SECRET_PREVIOUS].filter(
+    (value): value is string => Boolean(value && value !== "reminder"),
+  );
+  return secrets.map((secret) => createHash("sha256").update(`${secret}\n${normalized}`).digest("hex"));
 }
 
 export function dedupeKey(input: { kind: string; entityId: string; email: string; dueOn: string }): string {
@@ -180,7 +185,8 @@ export async function dispatchReminders(): Promise<DispatchSummary> {
         continue;
       }
       const hash = recipientHash(email);
-      if (suppressions.has(hash)) {
+      const suppressed = suppressions.has(hash) || legacyRecipientHashes(email).some((legacy) => suppressions.has(legacy));
+      if (suppressed) {
         summary.skipped += 1;
         continue;
       }

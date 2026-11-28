@@ -223,6 +223,7 @@ model Candidate {
   drafts               MarketingDraft[]
   placementOutcomes    PlacementOutcome[]
   assignments          StaffAssignment[]
+  workerFees           WorkerFee[]
 
   @@index([status])
   @@index([email])
@@ -681,9 +682,13 @@ model ServiceContract {
   createdById String
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+  anonymisedAt DateTime?
   invoices    Invoice[]
+  workerFees  WorkerFee[]
 
   @@index([employerId])
+  @@index([createdAt])
+  @@index([anonymisedAt])
 }
 
 model Invoice {
@@ -700,9 +705,12 @@ model Invoice {
   createdById String
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+  anonymisedAt DateTime?
   payments    PaymentRecord[]
 
   @@index([contractId])
+  @@index([createdAt])
+  @@index([anonymisedAt])
 }
 
 model PaymentRecord {
@@ -716,8 +724,11 @@ model PaymentRecord {
   notes        String                @default("")
   recordedById String
   createdAt    DateTime              @default(now())
+  anonymisedAt DateTime?
 
   @@index([invoiceId])
+  @@index([createdAt])
+  @@index([anonymisedAt])
 }
 
 model AiUsageLog {
@@ -810,6 +821,25 @@ model AiReservation {
   createdAt     DateTime @default(now())
 
   @@index([day, status])
+}
+
+/// Fee charged to the helper. A row is written only when it is within the MOM cap.
+model WorkerFee {
+  id                 String           @id @default(cuid())
+  candidateId        String?
+  candidate          Candidate?       @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+  contractId         String?
+  contract           ServiceContract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  monthlySalaryCents Int
+  contractMonths     Int
+  workPassMonths     Int
+  feeCents           Int
+  createdAt          DateTime         @default(now())
+  anonymisedAt       DateTime?
+
+  @@index([createdAt])
+  @@index([candidateId])
+  @@index([anonymisedAt])
 }
 
 model EmbeddingCache {

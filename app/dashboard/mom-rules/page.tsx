@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { JsonForm } from "@/components/json-form";
 import { requireUser } from "@/lib/auth/current";
+import { sgdFromCents } from "@/lib/mom/compliance";
 import { momRuleRows } from "@/lib/mom/review";
 import { staleAfterDays } from "@/lib/mom/rule-catalog";
 
@@ -16,7 +17,7 @@ export default async function MomRulesPage() {
       <div>
         <h1 className="text-4xl">MOM rules</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6">
-          These are the values already in the catalog. They are not new figures. A row stays on “Needs verification” until an admin marks it re-verified. A value older than the {staleDays}-day window is marked stale. Public holiday dates are changed on the{" "}
+          These are the values already in the catalog. Each row is labelled verify against current MOM guidance and shows the date that catalog entry was checked. A row stays on “Needs verification” until an admin marks it re-verified. A value older than the {staleDays}-day window is marked stale. Money rows are integer cents (S$300 is 30000). Public holiday dates are changed on the{" "}
           <Link className="underline" href="/dashboard/holidays">
             holiday page
           </Link>
@@ -29,16 +30,21 @@ export default async function MomRulesPage() {
             <h2 className="text-2xl">{row.name}</h2>
             <p>
               Value {row.value} {row.unit}
+              {row.unit === "cents" && Number.isInteger(Number(row.value))
+                ? ` · S$${sgdFromCents(Number(row.value))}`
+                : ""}
               {row.override ? ` · catalog ${row.catalogValue}` : ""}
             </p>
             <p>
-              Last verified {row.lastVerified}
-              {row.verifiedBy ? ` by ${row.verifiedBy}` : ""}
+              {row.verificationStatus}. Catalog checked {row.catalogVerifiedOn}. Last staff check {row.lastVerified}
+              {row.verifiedBy ? ` by ${row.verifiedBy}` : ""}.
             </p>
             <p>
-              <a className="underline" href={row.sourceUrl}>
-                Official MOM source
-              </a>
+              {row.sourceUrls.map((url) => (
+                <a key={url} className="mr-3 underline" href={url}>
+                  Official MOM source
+                </a>
+              ))}
             </p>
             {row.needsVerification ? <p>Needs verification</p> : <p>Re-verified by staff</p>}
             {row.stale ? <p>Stale: older than {staleDays} days.</p> : null}

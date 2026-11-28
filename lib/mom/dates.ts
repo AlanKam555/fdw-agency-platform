@@ -29,6 +29,10 @@ export function addCalendarDays(from: Date, days: number): Date {
   return cursor;
 }
 
+export function addCalendarMonths(from: Date, months: number): Date {
+  return new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() + months, from.getUTCDate()));
+}
+
 /**
  * SIP counts Saturday. It skips Sunday and public holidays, and it does not count `from`.
  * This is separate from `addWorkingDays`, which also skips Saturday.

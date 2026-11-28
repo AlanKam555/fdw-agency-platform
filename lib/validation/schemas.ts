@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { sipAttendanceAllowed } from "@/lib/mom/compliance";
 import { REMINDER_TYPES } from "@/lib/reminders/catalog";
 import { OUTCOME_COMPLETIONS, TERMINATION_REASONS } from "@/lib/matching/outcomes";
 
@@ -249,20 +250,45 @@ export const draftReviewSchema = z.object({
   decision: z.enum(["APPROVED", "REJECTED"]),
 });
 
-export const momAttestationSchema = z.object({
-  notRelated: formBoolean,
-  fdwOutsideSingapore: formBoolean,
-  securityBondArranged: formBoolean,
-  medicalInsuranceArranged: formBoolean,
-  personalAccidentArranged: formBoolean,
-  addressIsNricRegistered: formBoolean,
-  salaryAgreedSgd: z.coerce.number().int().min(0).max(20000),
-  restDaysPerMonth: z.coerce.number().int().min(0).max(8),
-  proposedSubmissionDate: dateField,
-  arrivalOn: optionalDate,
-  workPermitExpiresOn: optionalDate,
-  insuranceRenewsOn: optionalDate,
-  bondRenewsOn: optionalDate,
+export const momAttestationSchema = z
+  .object({
+    notRelated: formBoolean,
+    fdwOutsideSingapore: formBoolean,
+    securityBondArranged: formBoolean,
+    medicalInsuranceArranged: formBoolean,
+    personalAccidentArranged: formBoolean,
+    addressIsNricRegistered: formBoolean,
+    salaryAgreedSgd: z.coerce.number().int().min(0).max(20000),
+    restDaysPerMonth: z.coerce.number().int().min(1).max(8),
+    proposedSubmissionDate: dateField,
+    permitAction: z.enum(["new", "renewal"]).optional(),
+    arrivalOn: optionalDate,
+    sipOn: optionalDate,
+    workPermitExpiresOn: optionalDate,
+    insuranceRenewsOn: optionalDate,
+    bondRenewsOn: optionalDate,
+    inpatientSubLimitSgd: z.coerce.number().int().min(0).max(10_000_000).optional(),
+    daySurgerySubLimitSgd: z.coerce.number().int().min(0).max(10_000_000).optional(),
+    workerFeeSgd: z.coerce.number().int().min(0).max(200_000).optional(),
+    contractMonths: z.coerce.number().int().min(1).max(120).optional(),
+    workPassMonths: z.coerce.number().int().min(1).max(120).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.arrivalOn && value.sipOn && !sipAttendanceAllowed(value.arrivalOn, value.sipOn)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "SIP cannot be attended on the arrival day.",
+        path: ["sipOn"],
+      });
+    }
+  });
+
+export const workerFeeSchema = z.object({
+  candidateId: z.string().min(1).max(40),
+  monthlySalarySgd: z.coerce.number().int().min(0).max(20000),
+  contractMonths: z.coerce.number().int().min(1).max(120),
+  workPassMonths: z.coerce.number().int().min(1).max(120),
+  feeSgd: z.coerce.number().int().min(0).max(200_000),
 });
 
 export const reminderOptInSchema = z.object({

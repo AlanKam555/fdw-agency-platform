@@ -44,12 +44,20 @@ export default async function MomCasePage({ params }: { params: Promise<{ matchI
             {flag("personalAccidentArranged", "Personal accident insurance of at least the configured minimum")}
             {flag("addressIsNricRegistered", "Address matches the employer’s NRIC address")}
             <label className="label">
+              Permit
+              <select className="field" name="permitAction" defaultValue="new">
+                <option value="new">New application (23 to below 50)</option>
+                <option value="renewal">Renewal (until below 60)</option>
+              </select>
+            </label>
+            <label className="label">
               Agreed salary (SGD)
               <input className="field" type="number" name="salaryAgreedSgd" defaultValue={match.candidate.salaryExpectationSgd} required />
             </label>
             <label className="label">
               Rest days per month
-              <input className="field" type="number" name="restDaysPerMonth" defaultValue={4} required />
+              <input className="field" type="number" name="restDaysPerMonth" min={1} max={8} defaultValue={4} required />
+              <span className="mt-1 block text-sm">At least one rest day a month cannot be paid away. A weekly rest day that she agrees to work is paid as at least one extra day’s salary.</span>
             </label>
             <label className="label">
               Proposed submission date
@@ -58,6 +66,19 @@ export default async function MomCasePage({ params }: { params: Promise<{ matchI
             <label className="label">
               Arrival date, if known
               <input className="field" type="date" name="arrivalOn" />
+            </label>
+            <label className="label">
+              SIP date, if known
+              <input className="field" type="date" name="sipOn" />
+              <span className="mt-1 block text-sm">SIP cannot be on the arrival day itself.</span>
+            </label>
+            <label className="label">
+              Inpatient sub-limit (SGD), if the policy states one
+              <input className="field" type="number" name="inpatientSubLimitSgd" min={0} />
+            </label>
+            <label className="label">
+              Day surgery sub-limit (SGD), if the policy states one
+              <input className="field" type="number" name="daySurgerySubLimitSgd" min={0} />
             </label>
             <label className="label">
               Work permit expiry, if known
@@ -70,6 +91,33 @@ export default async function MomCasePage({ params }: { params: Promise<{ matchI
             <label className="label">
               Security bond renewal, if known
               <input className="field" type="date" name="bondRenewsOn" />
+            </label>
+          </JsonForm>
+        </div>
+      </section>
+      <section className="card p-5">
+        <h2 className="text-2xl">Fee charged to the helper</h2>
+        <p className="mt-2 text-sm">
+          The cap is one month of fixed salary for each year of the work pass or the contract, whichever is shorter, and not more than two months. A fee above that cap is refused and is not stored.
+        </p>
+        <div className="mt-3">
+          <JsonForm action="/api/staff/billing/worker-fees" submitLabel="Record helper fee" refresh={false}>
+            <input type="hidden" name="candidateId" value={match.candidate.id} />
+            <label className="label">
+              Monthly fixed salary (SGD)
+              <input className="field" type="number" name="monthlySalarySgd" defaultValue={match.candidate.salaryExpectationSgd} required />
+            </label>
+            <label className="label">
+              Contract length (months)
+              <input className="field" type="number" name="contractMonths" min={1} required />
+            </label>
+            <label className="label">
+              Work pass length (months)
+              <input className="field" type="number" name="workPassMonths" min={1} required />
+            </label>
+            <label className="label">
+              Fee charged to the helper (SGD)
+              <input className="field" type="number" name="feeSgd" min={0} required />
             </label>
           </JsonForm>
         </div>

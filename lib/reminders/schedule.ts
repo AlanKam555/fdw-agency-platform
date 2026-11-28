@@ -1,5 +1,5 @@
 import { permitLeadDays, reminderKindForCode, type ReminderTypeCode } from "@/lib/reminders/catalog";
-import { addCalendarDays, addDaysExcludingSundayAndHolidays, isoDate } from "@/lib/mom/dates";
+import { addCalendarDays, addCalendarMonths, addDaysExcludingSundayAndHolidays, isoDate } from "@/lib/mom/dates";
 
 export type DatedReminder = {
   code: string;
@@ -19,6 +19,9 @@ export function scheduleDatedReminders(input: {
   medicalExamDays: number;
   sipDays: number;
   firstTimeInSingapore: boolean;
+  helperAgeYears?: number | null;
+  sixMonthlyExamMonths?: number;
+  sixMonthlyExamExemptFromAge?: number;
   env?: NodeJS.ProcessEnv;
 }): DatedReminder[] {
   const rows: DatedReminder[] = [];
@@ -28,7 +31,7 @@ export function scheduleDatedReminders(input: {
       code: "sip_due",
       kind: "settling_in",
       title: "Settling-in Programme deadline",
-      dueHint: `Calculated as ${input.sipDays} days after arrival, excluding Sunday and the configured public holidays. Saturday counts. This is a preparation date, not a MOM filing.`,
+      dueHint: `Calculated as ${input.sipDays} days after arrival, excluding Sunday and the configured public holidays. Saturday counts. SIP cannot be attended on the arrival day itself. This is a preparation date, not a MOM filing.`,
       dueOn: due,
     });
   }
@@ -74,6 +77,21 @@ export function scheduleDatedReminders(input: {
       title: "Security bond renewal",
       dueHint: "Follow-up for the bond date staff recorded. This product does not buy the bond.",
       dueOn: input.bondRenewsOn,
+    });
+  }
+  if (
+    input.arrivalOn &&
+    input.helperAgeYears != null &&
+    input.sixMonthlyExamMonths &&
+    input.sixMonthlyExamExemptFromAge != null &&
+    input.helperAgeYears < input.sixMonthlyExamExemptFromAge
+  ) {
+    rows.push({
+      code: "six_monthly_exam",
+      kind: "medical_exam",
+      title: "Six-monthly medical examination",
+      dueHint: `First 6ME is ${input.sixMonthlyExamMonths} months after arrival, then every ${input.sixMonthlyExamMonths} months during employment. Helpers aged ${input.sixMonthlyExamExemptFromAge} and older are exempt and only need an examination on renewal.`,
+      dueOn: addCalendarMonths(input.arrivalOn, input.sixMonthlyExamMonths),
     });
   }
   if (input.arrivalOn && input.restDaysPerMonth > 0) {

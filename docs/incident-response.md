@@ -15,13 +15,28 @@ The product stores helper and household data in Postgres, encrypted identifiers,
 
 ## Clock
 
-Verify these timings against current PDPC guidance.
+Verify these timings against current PDPC guidance. This note is not legal advice.
 
-1. Assess whether the incident is notifiable within 30 days of becoming aware of it.
-2. Once the assessment says it is notifiable, notify the PDPC within 3 calendar days.
-3. Notify affected individuals as the current guidance requires. Do not wait for a perfect list if the exposure is ongoing. Stop the exposure first.
+The Personal Data Protection Act 2012, section 26D, requires the organisation to notify the Commission "as soon as is practicable, but in any case no later than 3 calendar days after the day the organisation makes that assessment." In this runbook that is written as: notify PDPC as soon as practicable, and no later than 3 calendar days after the day the breach is assessed notifiable. If the assessment is made on 1 January, notify by 4 January. The statute is at [sso.agc.gov.sg — PDPA s 26D](https://sso.agc.gov.sg/Act/PDPA2012?ProvIds=pr26D-).
 
-Record the time the agency first knew, the time the assessment finished, and the time each notice went out.
+The PDPC Guide to Managing Data Breaches (15 March 2021) says the assessment should be completed within 30 calendar days of the day the organisation has credible grounds to believe a breach has occurred. See [pdpc.gov.sg](https://www.pdpc.gov.sg/).
+
+A breach is notifiable when either trigger applies, under the Personal Data Protection (Notification of Data Breaches) Regulations 2021:
+
+- Significant harm: the breach involves prescribed personal data under regulation 3.
+- Significant scale: the breach affects 500 or more individuals under regulation 4.
+
+The regulations are at [sso.agc.gov.sg — S 64/2021](https://sso.agc.gov.sg/SL/PDPA2012-S64-2021).
+
+Notify affected individuals when the notifiable reason is significant harm (section 26D(2), which applies to section 26B(1)(a)). Do not notify them merely because the scale is 500 or more, unless significant harm also applies. Section 26D sets these exceptions:
+
+- Section 26D(5): remedial action, or a technological measure that was already in place, makes significant harm unlikely.
+- Section 26D(6): a law-enforcement instruction or a direction from the Commission says the organisation must not notify.
+- Section 26D(7): the Commission waives the requirement.
+
+Stop the exposure first. Do not wait for a perfect list of people while the exposure is ongoing. This software does not file the notice and does not decide that a breach is notifiable.
+
+Record the time the agency first had credible grounds, the time the assessment finished, and the time each notice went out.
 
 ## First hour
 

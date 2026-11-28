@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 
 const file = "/data/dev-secrets.env";
 if (process.env.NODE_ENV !== "production" && existsSync(file)) {
@@ -13,9 +14,10 @@ if (process.env.NODE_ENV !== "production" && existsSync(file)) {
   }
 }
 
+const nextBin = createRequire(import.meta.url).resolve("next/dist/bin/next");
 const child = spawn(
-  "npx",
-  ["next", "start", "--hostname", "0.0.0.0", "--port", process.env.PORT || "3000"],
+  process.execPath,
+  [nextBin, "start", "--hostname", "0.0.0.0", "--port", process.env.PORT || "3000"],
   { stdio: "inherit", env: process.env },
 );
 child.on("exit", (code) => process.exit(code ?? 1));

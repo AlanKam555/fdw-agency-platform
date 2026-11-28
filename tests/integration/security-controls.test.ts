@@ -5,7 +5,7 @@ import { hashPassword } from "@/lib/security/passwords";
 import { issueSession } from "@/lib/auth/sessions";
 import { POST as login } from "@/app/api/auth/login/route";
 import { PATCH as staffUsers } from "@/app/api/staff/users/route";
-import { GET as download } from "@/app/api/documents/[id]/route";
+import { GET as download, POST as issueLink } from "@/app/api/documents/[id]/route";
 import { proxy } from "@/proxy";
 import { beginTotpSetup, confirmTotpSetup, currentTotp, decryptTotpSecret } from "@/lib/security/totp";
 import { saveStoredObject, setBlobStoreForTests, type BlobStore } from "@/lib/storage/files";
@@ -269,10 +269,26 @@ describe("document downloads", () => {
     await prisma.user.update({ where: { id: admin!.id }, data: { disabledAt: null } });
     const csrf = "e".repeat(32);
     const issued = await issueSession({ user: admin!, csrf });
-    const response = await download(
+    const link = await issueLink(
       new NextRequest(`http://localhost:3000/api/documents/${document.id}`, {
-        headers: { cookie: cookieHeader(issued.token, csrf) },
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "http://localhost:3000",
+          cookie: cookieHeader(issued.token, csrf),
+          "x-csrf-token": csrf,
+        },
+        body: JSON.stringify({
+          reasonCode: "IDENTITY_CHECK",
+          reasonText: "Checking the file for the MOM pack.",
+        }),
       }),
+      { params: Promise.resolve({ id: document.id }) },
+    );
+    expect(link.status).toBe(200);
+    const body = (await link.json()) as { url: string };
+    const response = await download(
+      new NextRequest(`http://localhost:3000${body.url}`),
       { params: Promise.resolve({ id: document.id }) },
     );
     expect(response.status).toBe(302);

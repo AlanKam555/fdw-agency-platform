@@ -50,19 +50,19 @@ Staff and admin are not given a TOTP secret in the seed. The first sign-in start
 
 1. Open `/apply` in a private window.
 2. Use an email you control on `example.com`, or the seeded `candidate@harbourlight.example` if you only want to see the acknowledgement.
-3. The confirmation does not say whether the address was new. Sign in at `/login` and open `/candidate` to see the status when the account is yours.
+3. The confirmation does not say whether the address was new. Sign in at `/login` and open `/candidate` to see the status when the account is yours. `/candidate/privacy` is where that helper withdraws photo, marketing, or AI consent and downloads a copy of their data. The download asks for the password again.
 
 ## 3. Employer
 
 1. Sign in as `employer@harbourlight.example`.
 2. Open Helpers, shortlist one fictional profile, and request an interview.
-3. Household requirements are already seeded. Edit them if you want the next match to change.
+3. Household requirements are already seeded. Edit them if you want the next match to change. `/employer/privacy` withdraws marketing or AI consent and downloads a copy of the household file.
 
 ## 4. Staff
 
 1. Sign out and sign in as `staff@harbourlight.example`.
 2. Candidates. Open a profile. Status changes are one step at a time.
-3. Matching. Run a ranking. The page shows the score breakdown. Protected traits are not on the form.
+3. Matching. Run a ranking. The page shows the score breakdown and, separately, how much of the free text was used for the semantic score. Protected traits are not on the form. Revealing a passport or medical field, or opening a document, asks for a reason.
 4. Change a weight or use the what-if controls, then compare two helpers. The fairness note is about nationality counts, not a ranking input. Outcome evidence on the same page is a suggestion. The saved weight boxes do not change until you save.
 5. Approve a match, open the MOM pack, and download the PDF. The PDF says it is not a submission. Optional dates on the pack feed reminder due dates. Approve email on one reminder, or opt in a type under Reminders. The cron is a dry run until `REMINDERS_SEND=true`.
 6. MOM rules lists every catalog value and its MOM link. Each row says it needs verification until an admin marks it. Holidays shows 2025–2027 and the 2027 gazette note.
@@ -73,7 +73,7 @@ Staff and admin are not given a TOTP secret in the seed. The first sign-in start
 
 1. Sign in as `admin@harbourlight.example`.
 2. Settings. Provider rows say yes or no. Keys are not on the page. The rate limiter reads `memory` unless you configured Redis or Upstash. Retention reads `dry run`.
-3. Audit. Status changes, rankings, and reveals are listed. Document numbers are not copied into the metadata.
+3. Audit. Status changes, rankings, and reveals are listed. An admin also sees whether the hash chain checks out. Document numbers are not copied into the metadata. Settings shows whether zero-retention limiting and the staff-assignment gate are on. It still does not show keys.
 4. Users. Create a staff account with a password you choose. Do not reuse the demo password on a shared server.
 
 ## Reset

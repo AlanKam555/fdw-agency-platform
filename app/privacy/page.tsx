@@ -23,7 +23,7 @@ export default function PrivacyPage() {
       </p>
       <h2 className="mt-8 text-3xl">Consent, access, and deletion</h2>
       <p className="mt-3 leading-7">
-        Forms that store personal data require a consent checkbox tied to this version of the notice. You can ask staff for access or correction. An administrator can redact a helper profile: documents are deleted, passport and medical fields are wiped, and the account is disabled. Withdrawal of photo consent removes the portrait from the public gallery.
+        Withdrawal of photo or marketing consent removes the portrait and the public blurb. You can download a copy of your data from the privacy page after signing in again with your password. An administrator can redact a helper or household file: documents are deleted or queued for deletion, identifiers are wiped, and the account is disabled. Match scores and placement category codes can remain for a fairness audit.
       </p>
       <h2 className="mt-8 text-3xl">How long we keep it</h2>
       <p className="mt-3 leading-7">

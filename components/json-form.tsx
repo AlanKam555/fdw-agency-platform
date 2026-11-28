@@ -19,6 +19,9 @@ const BOOLEAN_FIELDS = new Set([
   "includeScreened",
   "measlesVaccinatedUnder7",
   "isUndischargedBankrupt",
+  "granted",
+  "marketingConsent",
+  "aiProcessingConsent",
 ]);
 
 export function readCsrf() {
@@ -78,6 +81,7 @@ export function JsonForm({
       next?: string;
       value?: string;
       note?: string;
+      url?: string;
     };
     setPending(false);
     if (!response.ok) {
@@ -86,6 +90,10 @@ export function JsonForm({
     }
     if (data.next) {
       window.location.href = data.next;
+      return;
+    }
+    if (typeof data.url === "string") {
+      window.location.href = data.url;
       return;
     }
     if (typeof data.value === "string") {

@@ -72,6 +72,20 @@ export default async function ApplyPage() {
               <option value="true">I consent to a portrait on the gallery</option>
             </select>
           </label>
+          <label className="label">
+            Marketing consent
+            <select className="select" name="marketingConsent" defaultValue="false">
+              <option value="false">Do not use my profile in marketing</option>
+              <option value="true">I consent to marketing use of public facts</option>
+            </select>
+          </label>
+          <label className="label">
+            AI processing
+            <select className="select" name="aiProcessingConsent" defaultValue="false">
+              <option value="false">Do not send experience text to an AI provider</option>
+              <option value="true">I consent to AI processing of experience text</option>
+            </select>
+          </label>
           <ConsentBox>I agree to the privacy notice for processing this application.</ConsentBox>
         </JsonForm>
       </div>

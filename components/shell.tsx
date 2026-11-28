@@ -44,10 +44,12 @@ export function Shell({
           ["/employer/maids", "Helpers"],
           ["/employer/shortlist", "Shortlist"],
           ["/employer/interviews", "Interviews"],
+          ["/employer/privacy", "Privacy"],
         ]
       : role === "CANDIDATE"
         ? [
             ["/candidate", "Your application"],
+            ["/candidate/privacy", "Privacy"],
             ["/apply", "Update details"],
           ]
         : role === "ADMIN"

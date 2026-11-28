@@ -7,7 +7,7 @@ export default async function MarketingPage() {
   const [drafts, candidates] = await Promise.all([
     prisma.marketingDraft.findMany({ orderBy: { createdAt: "desc" }, take: 40, include: { candidate: true } }),
     prisma.candidate.findMany({
-      where: { status: "AVAILABLE", photoConsent: true, redactedAt: null },
+      where: { status: "AVAILABLE", photoConsent: true, marketingConsent: true, redactedAt: null },
       select: { id: true, fullName: true },
       take: 40,
     }),

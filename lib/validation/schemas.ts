@@ -137,6 +137,8 @@ export const candidateApplicationSchema = z
     medicalFitStatus: z.enum(["PENDING", "FIT", "UNFIT"]).default("PENDING"),
     firstTimeInSingapore: formBoolean.default(true),
     photoConsent: formBoolean.default(false),
+    marketingConsent: formBoolean.optional(),
+    aiProcessingConsent: formBoolean.optional(),
     pdpaConsent: requiredConsent,
     internalNotes: z.string().trim().max(2000).optional(),
   })
@@ -346,4 +348,37 @@ export const staffUserSchema = z.object({
 
 export const sensitiveRevealSchema = z.object({
   field: z.enum(["passport", "fin", "medical", "nric"]),
+  reasonCode: z.enum([
+    "MOM_FILING",
+    "IDENTITY_CHECK",
+    "INTERVIEW_PREP",
+    "SUBJECT_ACCESS",
+    "INCIDENT_RESPONSE",
+    "OTHER",
+  ]),
+  reasonText: z.string().trim().min(12).max(500),
+});
+
+export const documentAccessSchema = sensitiveRevealSchema.pick({ reasonCode: true, reasonText: true });
+
+export const consentChangeSchema = z.object({
+  purpose: z.enum(["photo_publication", "marketing_publication", "ai_processing"]),
+  granted: formBoolean,
+});
+
+export const subjectExportSchema = z.object({
+  password: z.string().min(8).max(200),
+  format: z.enum(["json", "html", "pdf"]),
+});
+
+export const staffExportSchema = z.object({
+  subjectType: z.enum(["candidate", "employer"]),
+  subjectId: z.string().trim().min(5).max(40),
+  reasonCode: sensitiveRevealSchema.shape.reasonCode,
+  reasonText: z.string().trim().min(12).max(500),
+  format: z.enum(["json", "html", "pdf"]),
+});
+
+export const assignmentSchema = z.object({
+  staffEmail: z.string().trim().email().max(200),
 });

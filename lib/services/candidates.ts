@@ -70,6 +70,8 @@ export async function createCandidateApplication(
       householdExperience: input.householdExperience,
       internalNotes: "internalNotes" in input ? (input.internalNotes ?? "") : "",
       photoConsent: input.photoConsent,
+      marketingConsent: input.marketingConsent ?? false,
+      aiProcessingConsent: input.aiProcessingConsent ?? false,
       fictional: context.fictional ?? false,
       firstTimeInSingapore: input.firstTimeInSingapore,
       pdpaConsentAt: new Date(),
@@ -93,6 +95,28 @@ export async function createCandidateApplication(
                   subjectType: "Candidate",
                   subjectId: "pending",
                   purpose: "photo_publication",
+                  policyVersion: PDPA_VERSION,
+                  granted: true,
+                },
+              ]
+            : []),
+          ...(input.marketingConsent
+            ? [
+                {
+                  subjectType: "Candidate",
+                  subjectId: "pending",
+                  purpose: "marketing_publication",
+                  policyVersion: PDPA_VERSION,
+                  granted: true,
+                },
+              ]
+            : []),
+          ...(input.aiProcessingConsent
+            ? [
+                {
+                  subjectType: "Candidate",
+                  subjectId: "pending",
+                  purpose: "ai_processing",
                   policyVersion: PDPA_VERSION,
                   granted: true,
                 },
@@ -158,6 +182,7 @@ export async function listPublicHelpers(filters: {
   const where: Prisma.CandidateWhereInput = {
     status: "AVAILABLE",
     photoConsent: true,
+    marketingConsent: true,
     redactedAt: null,
   };
   const skills: Skill[] = [
@@ -186,7 +211,7 @@ export async function listPublicHelpers(filters: {
 
 export async function getPublicHelper(id: string) {
   const row = await prisma.candidate.findFirst({
-    where: { id, status: "AVAILABLE", photoConsent: true, redactedAt: null },
+    where: { id, status: "AVAILABLE", photoConsent: true, marketingConsent: true, redactedAt: null },
     include: { documents: { select: { kind: true } } },
   });
   return row ? toPublicCandidate(row) : null;

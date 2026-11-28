@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     candidate?.userId === guard.session.sub &&
     ["PASSPORT", "EDUCATIONAL_CERTIFICATE", "PHOTO"].includes(kind);
   if (!staff && !own) return json({ error: "Forbidden." }, 403);
-  if (kind === "PHOTO" && candidate && !candidate.photoConsent) {
+  if (kind === "PHOTO" && candidate && (!candidate.photoConsent || !candidate.marketingConsent)) {
     return json({ error: "Photo consent is required before a portrait can be stored." }, 400);
   }
   if (candidate) {

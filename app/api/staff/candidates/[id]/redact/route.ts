@@ -15,6 +15,6 @@ export async function POST(
     actorId: guard.session!.sub,
     ip: guard.ip,
   });
-  if (!result.ok) return json({ error: result.error }, 404);
+  if (!result.ok) return json({ error: result.error }, result.status);
   return json({ ok: true });
 }

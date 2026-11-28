@@ -82,7 +82,10 @@ export default async function RequirementMatchesPage({
             {!match.eligible ? (
               <p className="mt-2 text-sm">Gates: {match.ineligibleReasons.join(", ")}</p>
             ) : (
-              <p className="mt-2 text-sm leading-6">{match.explanation}</p>
+              <>
+                <p className="mt-2 text-sm leading-6">{match.explanation}</p>
+                <SemanticLine breakdown={match.breakdown} />
+              </>
             )}
             {match.decision === "SUGGESTED" ? (
               <div className="mt-3 flex flex-wrap gap-3">
@@ -168,11 +171,27 @@ export default async function RequirementMatchesPage({
                 <h3 className="text-xl">{match.candidate.fullName}</h3>
                 <p>Score {match.score ?? "—"} · {match.decision}</p>
                 <p className="mt-2 leading-6">{match.explanation}</p>
+                <SemanticLine breakdown={match.breakdown} />
               </article>
             ))}
           </div>
         ) : null}
       </section>
     </div>
+  );
+}
+
+function SemanticLine({ breakdown }: { breakdown: unknown }) {
+  if (!breakdown || typeof breakdown !== "object") return null;
+  const record = breakdown as { semantic?: number; semanticDetail?: Record<string, unknown> | null };
+  const detail = record.semanticDetail;
+  if (!detail) return null;
+  const charsUsed = Number(detail.charsUsed ?? 0);
+  const original = Number(detail.originalChars ?? 0);
+  const cap = Number(detail.cap ?? 0);
+  return (
+    <p className="mt-2 text-sm">
+      Semantic contribution: {record.semantic ?? "—"} points. Source {String(detail.source ?? "none")}. {charsUsed} of {original} characters used (cap {cap}). Employer text is embedded once. Cache {detail.cached ? "hit" : "miss"}.
+    </p>
   );
 }

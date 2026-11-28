@@ -32,7 +32,14 @@ export default async function SettingsPage() {
         <p>Rate limiter: {activeRateLimitDriver()}</p>
         <p>
           Retention job: {retention.enforce ? "enforcing" : "dry run"}
-          {retention.purgeAudit ? ", including aged audit rows" : ""}.
+          {retention.purgeAudit ? ", including aged audit rows" : ""}. Object-store retries run even on a dry run.
+        </p>
+        <p>
+          AI calls {process.env.AI_REQUIRE_ZERO_RETENTION === "true" ? "are limited to providers listed in AI_ZERO_RETENTION_PROVIDERS" : "are not limited to a zero-retention list"}.
+          That list is an operator assertion. This app cannot see the vendor dashboard. PII minimisation is {process.env.AI_PII_MINIMISATION === "false" ? "off" : "on"}.
+        </p>
+        <p>
+          Staff assignment gate: {process.env.STAFF_ASSIGNMENT_REQUIRED === "true" ? "on" : "off"}.
         </p>
         <p>
           Sessions last at most {sessions.absoluteHours} hours. Staff idle timeout is {sessions.staffIdleMinutes} minutes. Employer and helper idle timeout is {sessions.portalIdleMinutes} minutes. Revoked sessions are deleted after {sessions.revokedRetentionHours} hours. Expired sessions are deleted on the retention run.

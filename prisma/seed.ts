@@ -21,7 +21,7 @@ async function clearDemo() {
   const users = await prisma.user.findMany({ where: { email: { in: DEMO_EMAILS } } });
   const userIds = users.map((user) => user.id);
   if (userIds.length) {
-    await prisma.auditLog.deleteMany({ where: { actorId: { in: userIds } } });
+    await prisma.auditLog.deleteMany({ where: { actorId: { in: userIds }, seq: null } });
     await prisma.marketingDraft.deleteMany({
       where: { OR: [{ authorId: { in: userIds } }, { reviewerId: { in: userIds } }] },
     });
@@ -181,6 +181,8 @@ async function main() {
         publicBlurb: helper.blurb,
         householdExperience: "Fictional work history written for the demonstration.",
         photoConsent: helper.photoConsent,
+        marketingConsent: helper.photoConsent,
+        aiProcessingConsent: true,
         fictional: true,
         firstTimeInSingapore: true,
         pdpaConsentAt: now,
@@ -225,6 +227,8 @@ async function main() {
       eopCompletedOn: new Date("2026-11-16"),
       pdpaConsentAt: now,
       pdpaConsentVersion: PDPA_VERSION,
+      marketingConsent: false,
+      aiProcessingConsent: true,
       notes: "Fictional household brief.",
     },
   });

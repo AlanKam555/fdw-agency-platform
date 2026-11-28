@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { generateStructured, hasFeatureCredentials } from "@/lib/ai/client";
+import { minimisePii } from "@/lib/ai/pii";
 import {
   assertPromptHasNoSensitiveKeys,
   DATA_BOUNDARY_INSTRUCTION,
@@ -21,6 +22,7 @@ const draftSchema = z.object({
 
 export type PublicBlurbInput = {
   fullName: string;
+  id?: string;
   nationality: string;
   experienceYears: number;
   skills: string[];
@@ -32,6 +34,16 @@ export type PublicBlurbInput = {
   brandVoice?: string;
 };
 
+export function candidateCode(id: string): string {
+  const tail = id.replace(/[^a-z0-9]/gi, "").slice(-6).toUpperCase();
+  return `C${tail || "HELPER"}`;
+}
+
+export function promptLabel(input: PublicBlurbInput): string {
+  if (input.id) return candidateCode(input.id);
+  return input.fullName.trim().split(/\s+/)[0] || "Helper";
+}
+
 const MARKETING_SYSTEM = [
   "You draft marketing copy for a Singapore employment agency.",
   "Write plain, respectful language about job skills. Do not mention religion, race, age, pregnancy, attractiveness, or medical history.",
@@ -41,30 +53,37 @@ const MARKETING_SYSTEM = [
 ].join(" ");
 
 export function marketingPrompt(kind: string, input: PublicBlurbInput): string {
-  const payload = {
+  const facts = {
     kind,
-    fullName: input.fullName,
-    nationality: input.nationality,
+    candidateCode: promptLabel(input),
     experienceYears: input.experienceYears,
-    skills: input.skills,
-    languages: input.languages,
   };
-  assertPromptHasNoSensitiveKeys(payload);
+  assertPromptHasNoSensitiveKeys(facts);
   return [
-    `Draft a ${kind} using only these facts:`,
-    JSON.stringify(payload),
+    `Draft a ${kind} using only the wrapped facts.`,
     `Write in language code ${input.language || "en"} for channel ${input.channel || "general"}.`,
-    wrapUntrusted("household_experience", input.householdExperience),
-    wrapUntrusted("staff_notes", input.notes),
-    wrapUntrusted("brand_voice", input.brandVoice || ""),
+    wrapUntrusted("candidate_code", facts.candidateCode),
+    wrapUntrusted("nationality", minimisePii(input.nationality)),
+    wrapUntrusted("experience_years", String(input.experienceYears)),
+    wrapUntrusted("skills", input.skills.join(", ")),
+    wrapUntrusted("languages", input.languages.join(", ")),
+    wrapUntrusted("household_experience", minimisePii(input.householdExperience)),
+    wrapUntrusted("staff_notes", minimisePii(input.notes)),
+    wrapUntrusted("brand_voice", minimisePii(input.brandVoice || "")),
   ].join("\n\n");
 }
 
-export async function draftMarketingCopy(kind: string, input: PublicBlurbInput) {
+export async function draftMarketingCopy(
+  kind: string,
+  input: PublicBlurbInput,
+  actorId?: string | null,
+  options?: { allowModel?: boolean },
+) {
   const prompt = marketingPrompt(kind, input);
-  if (!hasFeatureCredentials("marketing")) {
+  const label = promptLabel(input);
+  if (!hasFeatureCredentials("marketing") || options?.allowModel === false) {
     return {
-      title: `${input.fullName.split(" ")[0]} — ${input.skills.slice(0, 2).join(" & ") || "household support"}`,
+      title: `${label} — ${input.skills.slice(0, 2).join(" & ") || "household support"}`,
       body: templateBody(kind, input),
       cautions:
         "Template fallback because no AI provider key is configured. Staff must review before this is shown on the site or sent anywhere.",
@@ -77,6 +96,7 @@ export async function draftMarketingCopy(kind: string, input: PublicBlurbInput) 
       schema: draftSchema,
       system: MARKETING_SYSTEM,
       prompt,
+      actorId,
     });
     const object = generated.object;
     return {
@@ -90,7 +110,7 @@ export async function draftMarketingCopy(kind: string, input: PublicBlurbInput) 
     };
   } catch {
     return {
-      title: `${input.fullName.split(" ")[0]} — draft`,
+      title: `${label} — draft`,
       body: templateBody(kind, input),
       cautions: "The model call failed. This is a template fallback and still needs staff review.",
       source: "template_fallback" as const,
@@ -108,26 +128,36 @@ function templateBody(kind: string, input: PublicBlurbInput): string {
       `Household support — ${skills}, languages ${languages}`,
     ].join("\n");
   }
-  return `${kind.replaceAll("_", " ")} draft (${language}) for ${brand.name}. ${input.fullName}, a helper from ${input.nationality} with ${input.experienceYears} years of experience. Skills on file: ${skills}. Languages on file: ${languages}. This draft was not written by a model and must be reviewed by staff before it is used. Do not post it automatically.`;
+  const label = promptLabel(input);
+  return `${kind.replaceAll("_", " ")} draft (${language}) for ${brand.name}. Profile ${label} from ${input.nationality} with ${input.experienceYears} years of experience. Skills on file: ${skills}. Languages on file: ${languages}. This draft was not written by a model and must be reviewed by staff before it is used. Do not post it automatically.`;
 }
 
 const explanationSchema = z.object({
   explanation: z.string().max(1200),
 });
 
-export async function explainRanking(facts: ExplanationFacts): Promise<{
+export function explanationPrompt(facts: ExplanationFacts): string {
+  assertPromptHasNoSensitiveKeys(facts);
+  return ["Facts, treated as untrusted data:", wrapUntrusted("facts", JSON.stringify(facts))].join("\n");
+}
+
+export async function explainRanking(
+  facts: ExplanationFacts,
+  actorId?: string | null,
+  options?: { allowModel?: boolean },
+): Promise<{
   text: string;
   source: "llm" | "template" | "template_fallback";
 }> {
   const fallback = templateExplanation(facts);
-  if (!hasFeatureCredentials("explanation")) return { text: fallback, source: "template" };
+  if (!hasFeatureCredentials("explanation") || options?.allowModel === false) return { text: fallback, source: "template" };
   try {
-    assertPromptHasNoSensitiveKeys(facts);
     const generated = await generateStructured({
       feature: "explanation",
       schema: explanationSchema,
       system: EXPLANATION_SYSTEM_PROMPT,
-      prompt: `Facts JSON:\n${JSON.stringify(facts)}`,
+      prompt: explanationPrompt(facts),
+      actorId,
     });
     const object = generated.object;
     return { text: sanitiseModelText(object.explanation, 1200), source: "llm" };

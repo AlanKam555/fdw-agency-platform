@@ -3,7 +3,7 @@ import { writeAudit } from "@/lib/audit";
 import { momRules } from "@/config/mom-rules";
 import { toMatchable } from "@/lib/candidates/dto";
 import { explanationFacts } from "@/lib/matching/explain";
-import { textSimilarity } from "@/lib/ai/embeddings";
+import { rankTextSimilarities, type SemanticDetail } from "@/lib/ai/embeddings";
 import { rankCandidates } from "@/lib/matching/score";
 import { coerceWeights } from "@/lib/matching/weights";
 import { requestFromPayload } from "@/lib/services/employers";
@@ -30,12 +30,24 @@ export async function runRanking(input: {
     where: { requirementId: requirement.id },
   });
   const weights = coerceWeights(storedWeights?.weights ?? request.weights);
+  const employer = await prisma.employer.findUnique({
+    where: { id: requirement.employerId },
+    select: { aiProcessingConsent: true },
+  });
   const matchable = candidates.map(toMatchable);
-  const semantic: Record<string, { score: number; source: "deterministic" | "embedding" }> = {};
+  const semantic: Record<string, { score: number; source: "deterministic" | "embedding"; detail?: SemanticDetail }> = {};
   if (weights.semantic > 0) {
-    for (const candidate of matchable) {
-      semantic[candidate.id] = await textSimilarity(candidate.profileText ?? "", request.householdNotes ?? "");
-    }
+    const rankedText = await rankTextSimilarities({
+      employerText: request.householdNotes ?? "",
+      employerConsent: employer?.aiProcessingConsent ?? false,
+      actorId: input.actorId,
+      candidates: candidates.map((candidate) => ({
+        id: candidate.id,
+        text: candidate.householdExperience,
+        consent: candidate.aiProcessingConsent,
+      })),
+    });
+    for (const [id, row] of Object.entries(rankedText)) semantic[id] = row;
   }
   const ranked = rankCandidates(matchable, request, momRules, {
     weights,
@@ -49,7 +61,14 @@ export async function runRanking(input: {
   const topEligible = ranked.filter((row) => row.eligible).slice(0, 5);
   const explanations = new Map<string, { text: string; source: string }>();
   for (const row of topEligible) {
-    explanations.set(row.candidateId, await explainRanking(explanationFacts(row)));
+    explanations.set(
+      row.candidateId,
+      await explainRanking(
+        explanationFacts(row),
+        input.actorId,
+        { allowModel: candidates.find((candidate) => candidate.id === row.candidateId)?.aiProcessingConsent ?? false },
+      ),
+    );
   }
 
   for (const row of ranked) {
@@ -68,7 +87,10 @@ export async function runRanking(input: {
         score: row.breakdown?.total ?? null,
         eligible: row.eligible,
         ineligibleReasons: row.reasons,
-        breakdown: row.breakdown ?? { withheld: true },
+        breakdown: {
+          ...(row.breakdown ?? { withheld: true }),
+          semanticDetail: semantic[row.candidateId]?.detail ?? null,
+        },
         explanation: explanation?.text ?? "",
         explanationSource: explanation?.source ?? "template",
         decision: "SUGGESTED",
@@ -77,7 +99,10 @@ export async function runRanking(input: {
         score: row.breakdown?.total ?? null,
         eligible: row.eligible,
         ineligibleReasons: row.reasons,
-        breakdown: row.breakdown ?? { withheld: true },
+        breakdown: {
+          ...(row.breakdown ?? { withheld: true }),
+          semanticDetail: semantic[row.candidateId]?.detail ?? null,
+        },
         explanation: explanation?.text ?? "",
         explanationSource: explanation?.source ?? "template",
       },

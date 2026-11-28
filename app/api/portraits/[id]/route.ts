@@ -35,7 +35,7 @@ export async function GET(
     },
   });
   const photo = candidate?.documents[0];
-  if (!candidate || !photo || !candidate.photoConsent || candidate.redactedAt) {
+  if (!candidate || !photo || !candidate.photoConsent || !candidate.marketingConsent || candidate.redactedAt) {
     return new NextResponse("Not found", { status: 404 });
   }
   if (candidate.status !== "AVAILABLE" && !staff) {

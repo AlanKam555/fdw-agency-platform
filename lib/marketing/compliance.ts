@@ -1,5 +1,11 @@
 export type ComplianceIssue = {
-  code: "missing_licence" | "missing_personnel" | "commodity_language" | "demeaning_language";
+  code:
+    | "missing_licence"
+    | "missing_personnel"
+    | "commodity_language"
+    | "demeaning_language"
+    | "contact_channel"
+    | "unapproved_claim";
   detail: string;
 };
 
@@ -8,6 +14,12 @@ const COMMODITY =
 
 const DEMEANING =
   /\b(sexy|beautiful body|young and pretty|docile|obedient girl|slave|product for the home)\b/i;
+
+const CONTACT =
+  /https?:\/\/|www\.|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|(?:\+65[\s-]?)?[3689]\d{7}\b/i;
+
+const CLAIM =
+  /\b(guaranteed|100%|no\.?\s*1|best maid|visa guaranteed|#1|cheapest)\b/i;
 
 export function checkAdvertisement(input: {
   body: string;
@@ -40,6 +52,18 @@ export function checkAdvertisement(input: {
     blocking.push({
       code: "demeaning_language",
       detail: "The draft uses objectifying or demeaning wording. Rewrite it around skills and the job.",
+    });
+  }
+  if (CONTACT.test(body)) {
+    blocking.push({
+      code: "contact_channel",
+      detail: "The draft contains a URL, email, or phone number. Remove it before this can be approved.",
+    });
+  }
+  if (CLAIM.test(body)) {
+    blocking.push({
+      code: "unapproved_claim",
+      detail: "The draft makes a guarantee or a ranking claim that has not been approved. Remove it.",
     });
   }
   return { ok: blocking.length === 0, blocking };

@@ -7,7 +7,7 @@ const email = `${stamp}@harbourlight.example`;
 
 describe("retention job", () => {
   afterAll(async () => {
-    await prisma.auditLog.deleteMany({ where: { entityId: stamp } });
+    await prisma.auditLog.deleteMany({ where: { entityId: stamp, seq: null } });
     await prisma.enquiry.deleteMany({ where: { email } });
     const addresses = [email, `unverified-${stamp}@harbourlight.example`];
     await prisma.candidate.deleteMany({ where: { email: { in: addresses } } });
@@ -64,7 +64,19 @@ describe("retention job", () => {
     expect(dry.counts.enquiries).toBeGreaterThanOrEqual(1);
     expect(dry.counts.candidates).toBeGreaterThanOrEqual(1);
     expect(dry.counts.auditLogs).toBeGreaterThanOrEqual(1);
-    expect(dry.processed).toEqual({ enquiries: 0, candidates: 0, auditLogs: 0, unverifiedAccounts: 0 });
+    expect(dry.processed).toEqual({
+      enquiries: 0,
+      candidates: 0,
+      auditLogs: 0,
+      unverifiedAccounts: 0,
+      employers: 0,
+      matchExplanations: 0,
+      outcomeNotes: 0,
+      interviewNotes: 0,
+      marketingDrafts: 0,
+      testimonials: 0,
+      sessions: 0,
+    });
     expect(JSON.stringify(dry)).not.toContain(email);
 
     const enforced = await runRetention({

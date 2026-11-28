@@ -1,16 +1,26 @@
 import { prisma } from "@/lib/db";
+import { verifyAuditChain } from "@/lib/audit-chain";
+import { requireUser } from "@/lib/auth/current";
 
 export const dynamic = "force-dynamic";
 
 export default async function AuditPage() {
+  const { user } = await requireUser(["ADMIN", "STAFF"]);
   const logs = await prisma.auditLog.findMany({
     orderBy: { createdAt: "desc" },
     take: 100,
     include: { actor: { select: { name: true, role: true } } },
   });
+  const chain = user.role === "ADMIN" ? await verifyAuditChain() : null;
   return (
     <div>
       <h1 className="text-4xl">Audit log</h1>
+      {chain ? (
+        <p className="mt-3 text-sm">
+          Hash chain {chain.ok ? "checks out" : "needs attention"} ({chain.checked} rows
+          {chain.problems.length ? `; ${chain.problems.join("; ")}` : ""}).
+        </p>
+      ) : null}
       <table className="mt-6 w-full text-left text-sm">
         <thead>
           <tr className="border-b border-[var(--line)]">

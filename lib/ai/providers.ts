@@ -110,8 +110,24 @@ export function providerChain(feature: AiFeature): ProviderId[] {
   return configured.length ? configured : ["openai"];
 }
 
+/** Operator assertion. The app cannot see the vendor's retention dashboard. */
+export function providerAllowedForData(id: ProviderId): boolean {
+  if (process.env.AI_REQUIRE_ZERO_RETENTION !== "true") return true;
+  return parseProviderList(process.env.AI_ZERO_RETENTION_PROVIDERS).includes(id);
+}
+
+export function knownEmbeddingModelNames(): string[] {
+  const names = new Set<string>();
+  for (const id of PROVIDER_IDS) {
+    if (DEFAULT_EMBEDDINGS[id] || process.env[`AI_${id.toUpperCase()}_EMBEDDING_MODEL`]) {
+      names.add(embeddingModelName(id));
+    }
+  }
+  return [...names];
+}
+
 export function runnableProviders(feature: AiFeature): ProviderId[] {
-  return providerChain(feature).filter(providerConfigured);
+  return providerChain(feature).filter((id) => providerConfigured(id) && providerAllowedForData(id));
 }
 
 export function hasFeatureCredentials(feature: AiFeature): boolean {
@@ -126,6 +142,7 @@ export function providerDirectory() {
     model: providerModel(id),
     embeddingModel: DEFAULT_EMBEDDINGS[id] ? embeddingModelName(id) : "",
     features: AI_FEATURES.filter((feature) => providerChain(feature).includes(id)),
+    zeroRetentionListed: parseProviderList(process.env.AI_ZERO_RETENTION_PROVIDERS).includes(id),
   }));
 }
 

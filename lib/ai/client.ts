@@ -1,6 +1,7 @@
 import { generateObject } from "ai";
 import type { ZodType } from "zod";
-import { budgetAllows, recordUsage, todaysUsage } from "@/lib/ai/budget";
+import { recordUsage, reserveBudget, settleBudget } from "@/lib/ai/budget";
+import { estimateCostMicro } from "@/lib/ai/pricing";
 import { runProviderChain } from "@/lib/ai/chain";
 import {
   hasFeatureCredentials,
@@ -10,6 +11,7 @@ import {
   providerDirectory,
   providerModel,
   runnableProviders,
+  providerAllowedForData,
   type AiFeature,
   type ProviderId,
 } from "@/lib/ai/providers";
@@ -51,9 +53,16 @@ export async function generateStructured<T>(options: {
   schema: ZodType<T>;
   system: string;
   prompt: string;
+  actorId?: string | null;
 }): Promise<{ object: T; provider: ProviderId; model: string }> {
-  const usage = await todaysUsage();
-  if (!budgetAllows(usage.spentCents, usage.calls)) {
+  const limits = await import("@/lib/ai/budget");
+  const hold = await reserveBudget({
+    feature: options.feature,
+    actorId: options.actorId ?? null,
+    kind: "chat",
+    reserveMicro: limits.budgetLimits().chatReserveMicro,
+  });
+  if (!hold.ok) {
     await recordUsage({
       feature: options.feature,
       provider: "none",
@@ -61,54 +70,76 @@ export async function generateStructured<T>(options: {
       success: false,
       latencyMs: 0,
       errorCode: "budget",
+      actorId: options.actorId,
+      kind: "chat",
     });
     throw new Error("AI daily budget reached");
   }
 
   const { maxRetries, backoffMs } = retrySettings();
-  const result = await runProviderChain({
-    providers: providerChain(options.feature),
-    configured: providerConfigured,
-    maxRetries,
-    backoffMs,
-    run: async (provider) => {
-      const started = Date.now();
-      const modelName = providerModel(provider);
-      try {
-        const generated = await generateObject({
-          model: languageModelFor(provider),
-          schema: options.schema,
-          system: options.system,
-          prompt: options.prompt,
-          temperature: 0.2,
-          maxRetries: 0,
-          abortSignal: AbortSignal.timeout(timeoutMs()),
-        });
-        const tokens = readUsage(generated.usage);
-        await recordUsage({
-          feature: options.feature,
-          provider,
-          model: modelName,
-          success: true,
-          latencyMs: Date.now() - started,
-          inputTokens: tokens.inputTokens,
-          outputTokens: tokens.outputTokens,
-        });
-        return generated.object;
-      } catch (error) {
-        await recordUsage({
-          feature: options.feature,
-          provider,
-          model: modelName,
-          success: false,
-          latencyMs: Date.now() - started,
-          errorCode: error instanceof Error ? error.name : "error",
-        });
-        throw error;
-      }
-    },
-  });
-
-  if (!result.ok) throw new Error(result.error);
-  return { object: result.value, provider: result.provider, model: providerModel(result.provider) };
+  let settled = false;
+  let actualMicro = 0;
+  let succeeded = false;
+  try {
+    const result = await runProviderChain({
+      providers: providerChain(options.feature),
+      configured: (id) => providerConfigured(id) && providerAllowedForData(id),
+      maxRetries,
+      backoffMs,
+      run: async (provider) => {
+        const started = Date.now();
+        const modelName = providerModel(provider);
+        try {
+          const generated = await generateObject({
+            model: languageModelFor(provider),
+            schema: options.schema,
+            system: options.system,
+            prompt: options.prompt,
+            temperature: 0.2,
+            maxRetries: 0,
+            abortSignal: AbortSignal.timeout(timeoutMs()),
+          });
+          const tokens = readUsage(generated.usage);
+          actualMicro = estimateCostMicro({
+            provider,
+            model: modelName,
+            inputTokens: tokens.inputTokens,
+            outputTokens: tokens.outputTokens,
+            kind: "chat",
+          });
+          succeeded = true;
+          await recordUsage({
+            feature: options.feature,
+            provider,
+            model: modelName,
+            success: true,
+            latencyMs: Date.now() - started,
+            inputTokens: tokens.inputTokens,
+            outputTokens: tokens.outputTokens,
+            actorId: options.actorId,
+            kind: "chat",
+          });
+          return { object: generated.object, model: modelName };
+        } catch (error) {
+          await recordUsage({
+            feature: options.feature,
+            provider,
+            model: modelName,
+            success: false,
+            latencyMs: Date.now() - started,
+            errorCode: error instanceof Error ? error.name : "error",
+            actorId: options.actorId,
+            kind: "chat",
+          });
+          throw error;
+        }
+      },
+    });
+    if (!result.ok) throw new Error(result.error);
+    await settleBudget(hold.reservationId, actualMicro, true);
+    settled = true;
+    return { object: result.value.object, provider: result.provider, model: result.value.model };
+  } finally {
+    if (!settled) await settleBudget(hold.reservationId, 0, succeeded);
+  }
 }

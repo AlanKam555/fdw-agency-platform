@@ -137,6 +137,28 @@ The app binds to `0.0.0.0` and the platform port. No background worker is requir
 | `EMAIL_STAFF_INBOX` | Optional extra recipient for interview reminders |
 | `MOM_RULE_STALE_DAYS` | Age, in days, before a MOM rule row is marked stale. Default 90 |
 | `MOM_PUBLIC_HOLIDAYS` | Optional comma-separated `YYYY-MM-DD` list. When empty, the transcribed MOM list is used |
+| `AI_USER_DAILY_BUDGET_CENTS` | Per-user daily AI cap in cents. Default 100 |
+| `AI_USER_MAX_CALLS_PER_DAY` | Per-user daily AI calls. Default 40 |
+| `AI_FEATURE_DAILY_BUDGET_CENTS` | Per-feature daily AI cap in cents. Default 250 |
+| `AI_FEATURE_MAX_CALLS_PER_DAY` | Per-feature daily AI calls. Default 80 |
+| `AI_RESERVE_MICRO` | Micro-dollars reserved before a chat call. Default 100000 |
+| `AI_EMBED_RESERVE_MICRO` | Micro-dollars reserved before an embedding call. Default 20000 |
+| `AI_PRICE_TABLE_JSON` | Optional override of the placeholder per-model rates. Verify the numbers before relying on them |
+| `AI_EMBED_MAX_CHARS` | Free-text cap before an embedding. Default 600 |
+| `AI_EMBED_CONCURRENCY` | Parallel single-embedding calls when a batch call is unavailable. Default 4 |
+| `AI_EMBED_TIMEOUT_MS` | Overall embedding timeout. Default 20000 |
+| `AI_PII_MINIMISATION` | Default on. Set `false` to send unredacted notes to a provider |
+| `AI_REQUIRE_ZERO_RETENTION` | Default false. `true` allows only providers listed in `AI_ZERO_RETENTION_PROVIDERS` |
+| `AI_ZERO_RETENTION_PROVIDERS` | Comma-separated provider ids the operator asserts are configured for zero retention |
+| `STAFF_ASSIGNMENT_REQUIRED` | Default false. `true` limits staff file access to assigned candidates. Admins are exempt |
+| `REVEAL_HOURLY_QUOTA` / `REVEAL_DAILY_QUOTA` | Sensitive-field reveals per staff user. Defaults 15 and 40 |
+| `DOWNLOAD_HOURLY_QUOTA` / `DOWNLOAD_DAILY_QUOTA` | Document downloads per staff user. Defaults 30 and 80 |
+| `ALERT_WEBHOOK_URL` | Optional Slack or generic webhook for quota, MFA, and lockout anomalies |
+| `MFA_FAIL_HOURLY_ALERT` / `LOCKOUT_HOURLY_ALERT` | Hourly counts that fire one anomaly alert. Defaults 10 and 8 |
+| `AUDIT_SINK` | Empty, `webhook`, or `s3`. Copies each new audit row. A failure does not block the action |
+| `AUDIT_WEBHOOK_URL` | Destination when `AUDIT_SINK=webhook` |
+| `AUDIT_S3_BUCKET` / `AUDIT_S3_PREFIX` | Optional bucket and key prefix for the audit sink. Defaults to the document bucket and `audit` |
+| `AUDIT_S3_OBJECT_LOCK` / `AUDIT_S3_LOCK_DAYS` | `true` asks for a governance lock. The bucket must already have Object Lock. Default lock 365 days |
 
 ## Security
 

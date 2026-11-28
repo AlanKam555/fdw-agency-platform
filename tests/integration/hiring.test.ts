@@ -20,7 +20,7 @@ async function cleanup() {
   });
   const ids = users.map((user) => user.id);
   if (ids.length) {
-    await prisma.auditLog.deleteMany({ where: { actorId: { in: ids } } });
+    await prisma.auditLog.deleteMany({ where: { actorId: { in: ids }, seq: null } });
     await prisma.marketingDraft.deleteMany({
       where: { OR: [{ authorId: { in: ids } }, { reviewerId: { in: ids } }] },
     });

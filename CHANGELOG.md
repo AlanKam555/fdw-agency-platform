@@ -11,11 +11,20 @@
 - Session cookies, document links, unsubscribe links, reminder recipient hashes, and email confirmation tokens use HKDF purpose keys. Field ciphertext records a key id so a keyring can decrypt older rows. `npm run secrets:reencrypt` rewrites stored values to the active key. Recovery codes issued after this release stay valid when `AUTH_SECRET` rotates. They are tied to the field key id in the hash.
 - GitHub Actions are pinned to commit SHAs. The gitleaks download is checked against a checksum. CI runs `npm audit --omit=dev --audit-level=high`, a Trivy image scan, and a CycloneDX SBOM. The app image is multi-stage, runs as `node`, upgrades Debian security packages at build, omits the npm CLI and the Prisma CLI, and does not migrate on start. `Strict-Transport-Security` is set when `APP_URL` is `https`. MinIO is published on `127.0.0.1` only.
 - An administrator can reset another staff member's authenticator after entering their own password and current code. That revokes the target's sessions and requires enrolment again. Sign-in no longer sleeps inside the request: after five failures the next attempt is `429` with `Retry-After`. Authenticator guesses are counted per user and IP.
+- Complete redaction for a helper profile and a household. Personal fields, draft text, match explanations, and outcome notes are cleared. Match scores and placement category codes stay for the fairness audit. A failed object-store delete is queued and retried.
+- Subject-access download after a password check, and consent withdrawal for photo, marketing, and AI processing. Staff reveals and downloads require a reason and stay inside hourly and daily quotas. The audit log is a hash chain.
+
+### Added
+
+- AI cost in micro-dollars, a placeholder price table, and an atomic daily reservation for the global cap, a per-user cap, and a per-feature cap. Candidate embeddings are cached by content hash and model. Employer text is embedded once per ranking.
+- Prompts wrap every untrusted field and use a candidate code instead of a full name. PII minimisation is on unless `AI_PII_MINIMISATION=false`. Marketing compliance flags contact details and unapproved claims.
+- A PDPA incident-response runbook. The legal timings in that note must be checked against current PDPC guidance.
 
 ### Changed
 
 - Zod is `^4.6.6`.
 - Existing session cookies stop working, because the session MAC key changed. Outstanding document links expire within five minutes. Pre-release recovery codes still match until `AUTH_SECRET` itself changes. New confirmation links are required before a newly registered employer or helper can sign in. Photos already in storage stay off the public gallery until staff approve them.
+- AI processing consent defaults to off for new applications. Seeded demo profiles opt in so a configured provider can still be exercised. Retention stays a dry run unless `RETENTION_ENFORCE=true`.
 
 ## 0.4.0 — 2026-11-26
 

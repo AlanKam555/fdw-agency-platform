@@ -25,7 +25,7 @@ function request(body: Record<string, unknown>) {
 
 describe("public registration", () => {
   afterAll(async () => {
-    await prisma.auditLog.deleteMany({ where: { actor: { email } } });
+    await prisma.auditLog.deleteMany({ where: { actor: { email }, seq: null } });
     await prisma.user.deleteMany({ where: { email } });
     await prisma.$disconnect();
   });

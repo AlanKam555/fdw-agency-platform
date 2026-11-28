@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { writeAudit } from "@/lib/audit";
-import { deleteObject } from "@/lib/storage/files";
 import { draftMarketingCopy, type PublicBlurbInput } from "@/lib/ai/drafts";
 import { checkAdvertisement, complianceFooter, withComplianceFooter } from "@/lib/marketing/compliance";
 import { brand } from "@/config/brand";
 import { agencyProfile } from "@/lib/services/agency";
-import { PDPA_VERSION } from "@/lib/validation/schemas";
+
+export { redactCandidate } from "@/lib/privacy/redact";
 
 export async function addShortlist(input: {
   userId: string;
@@ -20,6 +20,7 @@ export async function addShortlist(input: {
       id: input.candidateId,
       status: "AVAILABLE",
       photoConsent: true,
+      marketingConsent: true,
       redactedAt: null,
     },
   });
@@ -50,7 +51,7 @@ export async function requestInterview(input: {
   const employer = await prisma.employer.findUnique({ where: { userId: input.userId } });
   if (!employer) return { ok: false as const, error: "Save your household requirements first." };
   const candidate = await prisma.candidate.findFirst({
-    where: { id: input.candidateId, status: "AVAILABLE", redactedAt: null, photoConsent: true },
+    where: { id: input.candidateId, status: "AVAILABLE", redactedAt: null, photoConsent: true, marketingConsent: true },
   });
   if (!candidate) return { ok: false as const, error: "That profile is not open for interviews." };
   const interview = await prisma.interviewRequest.create({
@@ -92,10 +93,13 @@ export async function createMarketingDraft(input: {
     language: input.language,
     channel: input.channel,
   };
+  let allowModel = true;
   if (input.candidateId) {
     const candidate = await prisma.candidate.findUnique({ where: { id: input.candidateId } });
     if (!candidate || candidate.redactedAt) return { ok: false as const, error: "Profile not found" };
+    allowModel = candidate.aiProcessingConsent;
     facts = {
+      id: candidate.id,
       fullName: candidate.fullName,
       nationality: candidate.nationality,
       experienceYears: candidate.experienceYears,
@@ -113,7 +117,7 @@ export async function createMarketingDraft(input: {
   }
   const profile = await agencyProfile();
   facts.brandVoice = profile.brandVoice;
-  const draft = await draftMarketingCopy(input.kind, facts);
+  const draft = await draftMarketingCopy(input.kind, facts, input.authorId, { allowModel });
   const footer = complianceFooter({
     agencyName: profile.name,
     licenceNo: profile.eaLicenceNo,
@@ -221,7 +225,7 @@ export async function reviewMarketingDraft(input: {
   });
   if (input.decision === "APPROVED" && draft.kind === "PROFILE_BLURB" && draft.candidateId) {
     const candidate = await prisma.candidate.findUnique({ where: { id: draft.candidateId } });
-    if (candidate?.photoConsent) {
+    if (candidate?.photoConsent && candidate.marketingConsent) {
       await prisma.candidate.update({
         where: { id: candidate.id },
         data: { publicBlurb: draft.body },
@@ -237,68 +241,4 @@ export async function reviewMarketingDraft(input: {
     ip: input.ip,
   });
   return { ok: true as const, draft: updated };
-}
-
-export async function redactCandidate(input: { candidateId: string; actorId: string | null; ip: string }) {
-  const candidate = await prisma.candidate.findUnique({
-    where: { id: input.candidateId },
-    include: { documents: true },
-  });
-  if (!candidate) return { ok: false as const, error: "Profile not found" };
-  for (const document of candidate.documents) {
-    await deleteObject(document.storageKey).catch(() => undefined);
-  }
-  await prisma.$transaction([
-    prisma.document.deleteMany({ where: { candidateId: candidate.id } }),
-    prisma.candidate.update({
-      where: { id: candidate.id },
-      data: {
-        fullName: "Redacted profile",
-        email: null,
-        phone: null,
-        publicBlurb: "",
-        householdExperience: "",
-        internalNotes: "",
-        passportNumberEnc: null,
-        finEnc: null,
-        medicalNotesEnc: null,
-        photoConsent: false,
-        status: "WITHDRAWN",
-        redactedAt: new Date(),
-      },
-    }),
-    prisma.consentRecord.create({
-      data: {
-        subjectType: "Candidate",
-        subjectId: candidate.id,
-        candidateId: candidate.id,
-        purpose: "erasure",
-        policyVersion: PDPA_VERSION,
-        granted: false,
-        withdrawnAt: new Date(),
-      },
-    }),
-  ]);
-  if (candidate.userId) {
-    await prisma.user.update({
-      where: { id: candidate.userId },
-      data: { disabledAt: new Date(), name: "Redacted", email: `redacted-${candidate.id}@invalid.local` },
-    });
-    const { revokeAllSessions } = await import("@/lib/auth/sessions");
-    await revokeAllSessions({
-      userId: candidate.userId,
-      reason: "privacy_redact",
-      actorId: input.actorId,
-      ip: input.ip,
-    });
-  }
-  await writeAudit({
-    actorId: input.actorId,
-    action: "privacy.redact",
-    entityType: "Candidate",
-    entityId: candidate.id,
-    metadata: { documentsRemoved: candidate.documents.length },
-    ip: input.ip,
-  });
-  return { ok: true as const };
 }

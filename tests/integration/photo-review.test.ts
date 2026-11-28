@@ -36,6 +36,7 @@ describe("portrait approval", () => {
         availableFrom: new Date("2026-12-01"),
         status: "AVAILABLE",
         photoConsent: true,
+        marketingConsent: true,
         fictional: true,
       },
     });

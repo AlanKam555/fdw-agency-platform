@@ -54,7 +54,7 @@ Public holiday dates used by deadline maths come from `config/public-holidays.ts
 
 ## AI boundary
 
-Ranking is code. A model may write an explanation from the numeric breakdown, or a marketing draft from public profile facts. The prompt wrapper marks free text as untrusted, rejects sensitive keys, and uses a schema with no tools. If every configured provider fails, the feature returns a labelled template. Usage rows store provider, model, token counts, and an estimated cost. They do not store the prompt.
+Ranking is code. A model may write an explanation from the numeric breakdown, or a marketing draft from public profile facts, and only when that person has AI-processing consent. The prompt wrapper marks every free-text field as untrusted, uses a candidate code instead of a full name, rejects sensitive keys, and uses a schema with no tools. Phone numbers, emails, and identity-number patterns are stripped before the call unless minimisation is turned off. Embedding text is capped, cached by hash and model, and the employer text is embedded once per ranking. If every configured provider fails, or the daily reservation is refused, the feature returns a labelled template. Usage rows store provider, model, token counts, and an integer micro-dollar estimate. They do not store the prompt. `AI_REQUIRE_ZERO_RETENTION=true` limits the call to providers the operator listed. The app cannot check the vendor dashboard.
 
 ## What is intentionally absent
 

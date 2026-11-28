@@ -13,6 +13,7 @@
     "typecheck": "prisma generate && tsc --noEmit",
     "test": "prisma generate && vitest run",
     "test:e2e": "playwright test",
+    "audit:verify": "tsx scripts/verify-audit-chain.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",

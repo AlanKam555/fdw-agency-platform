@@ -63,10 +63,25 @@ export default async function CandidateDetailPage({
           {(["passport", "medical"] as const).map((field) => (
             <JsonForm key={field} action={`/api/staff/candidates/${candidate.id}/sensitive`} submitLabel={`Reveal ${field}`} refresh={false}>
               <input type="hidden" name="field" value={field} />
+              <label className="label">
+                Reason
+                <select className="field" name="reasonCode" defaultValue="IDENTITY_CHECK">
+                  <option value="MOM_FILING">MOM filing</option>
+                  <option value="IDENTITY_CHECK">Identity check</option>
+                  <option value="INTERVIEW_PREP">Interview preparation</option>
+                  <option value="SUBJECT_ACCESS">Subject access</option>
+                  <option value="INCIDENT_RESPONSE">Incident response</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </label>
+              <label className="label">
+                Why this is needed
+                <textarea className="area" name="reasonText" minLength={12} required placeholder="At least a short sentence" />
+              </label>
             </JsonForm>
           ))}
         </div>
-        <p className="mt-3 text-xs">Each reveal is written to the audit log. The value is returned once and is not stored in the page.</p>
+        <p className="mt-3 text-xs">Each reveal is written to the audit log with the reason. The value is returned once and is not stored in the page. Hourly and daily quotas apply.</p>
       </section>
 
       <section className="card p-5">
@@ -74,9 +89,24 @@ export default async function CandidateDetailPage({
         <ul className="mt-3 grid gap-2 text-sm">
           {candidate.documents.map((document) => (
             <li key={document.id}>
-              <a className="underline" href={`/api/documents/${document.id}`}>
-                {document.kind}: {document.fileName}
-              </a>
+              <JsonForm action={`/api/documents/${document.id}`} submitLabel={`Open ${document.fileName}`} refresh={false}>
+                <input type="hidden" name="fileLabel" value={`${document.kind}: ${document.fileName}`} />
+                <label className="label">
+                  Reason
+                  <select className="field" name="reasonCode" defaultValue="MOM_FILING">
+                    <option value="MOM_FILING">MOM filing</option>
+                    <option value="IDENTITY_CHECK">Identity check</option>
+                    <option value="INTERVIEW_PREP">Interview preparation</option>
+                    <option value="SUBJECT_ACCESS">Subject access</option>
+                    <option value="INCIDENT_RESPONSE">Incident response</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </label>
+                <label className="label">
+                  Why this file is needed
+                  <textarea className="area" name="reasonText" minLength={12} required />
+                </label>
+              </JsonForm>
             </li>
           ))}
           {candidate.documents.length === 0 ? <li>No files yet.</li> : null}
@@ -89,9 +119,25 @@ export default async function CandidateDetailPage({
       {user.role === "ADMIN" ? (
         <section className="card p-5">
           <h2 className="text-2xl">Redact this profile</h2>
-          <p className="mt-2 text-sm">Deletes documents, wipes passport and medical fields, and disables the linked account.</p>
+          <p className="mt-2 text-sm">
+            Erases direct identifiers, household narrative, passport and medical fields, and linked draft text. Match scores and placement category codes stay for the fairness audit. A failed file delete is queued instead of dropping the storage key.
+          </p>
           <JsonForm action={`/api/staff/candidates/${candidate.id}/redact`} submitLabel="Redact personal data">
             <input type="hidden" name="confirm" value="yes" />
+          </JsonForm>
+        </section>
+      ) : null}
+      {user.role === "ADMIN" ? (
+        <section className="card p-5">
+          <h2 className="text-2xl">Assign a staff member</h2>
+          <p className="mt-2 text-sm">
+            Used only when STAFF_ASSIGNMENT_REQUIRED is on. Admins can still open every file.
+          </p>
+          <JsonForm action={`/api/staff/candidates/${candidate.id}/assign`} submitLabel="Assign">
+            <label className="label">
+              Staff email
+              <input className="field" name="staffEmail" type="email" required />
+            </label>
           </JsonForm>
         </section>
       ) : null}
